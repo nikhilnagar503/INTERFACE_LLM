@@ -1,0 +1,2 @@
+# Dependencies moved to backend/requirements/base.txt
+-r backend/requirements/base.txt

@@ -45,7 +45,7 @@ function WelcomePage() {
         <p>Chat with AI. Break down lengthy texts into concise summaries to grasp.</p>
       </div>
 
-      <div className="suggestions-grid">
+      {/* <div className="suggestions-grid">
         {suggestions.map((suggestion, index) => (
           <div key={index} className="suggestion-card">
             <div className="suggestion-icon">
@@ -55,7 +55,8 @@ function WelcomePage() {
             <p>{suggestion.description}</p>
           </div>
         ))}
-      </div>
+      </div> */}
+      
     </div>
   );
 }

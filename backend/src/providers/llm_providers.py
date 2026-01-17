@@ -149,8 +149,11 @@ class GroqProvider(LLMProvider):
 
             messages.append({"role": "user", "content": message})
 
+            # Remove 'groq/' prefix from model name if present
+            model_name = self.model.replace("groq/", "")
+
             resp = self.client.chat.completions.create(
-                model=self.model,
+                model=model_name,
                 messages=messages,
                 temperature=0.7,
                 max_tokens=512,

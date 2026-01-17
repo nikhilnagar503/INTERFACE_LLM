@@ -29,6 +29,7 @@ class ConfigureRequest(BaseModel):
 class ChatRequest(BaseModel):
     message: str
     session_id: str = "default"
+    history: List[Dict] = None  # Optional conversation history from frontend
 
 class ClearRequest(BaseModel):
     session_id: str = "default"
@@ -136,6 +137,7 @@ def chat(request_data: ChatRequest):
     try:
         message = request_data.message
         session_id = request_data.session_id
+        history = request_data.history or []
 
         if not message:
             raise HTTPException(status_code=400, detail='Message is required')
@@ -148,14 +150,19 @@ def chat(request_data: ChatRequest):
 
         session = sessions[session_id]
         provider = session['provider']
-        chat_history = session['chat_history']
+        
+        # Use history from frontend if provided, otherwise use stored history
+        if history:
+            chat_history = history
+        else:
+            chat_history = session['chat_history']
 
         # Get response from LLM
         response = provider.chat(message, chat_history)
 
-        # Update chat history
-        chat_history.append({'role': 'user', 'content': message})
-        chat_history.append({'role': 'assistant', 'content': response})
+        # Update stored chat history
+        session['chat_history'].append({'role': 'user', 'content': message})
+        session['chat_history'].append({'role': 'assistant', 'content': response})
 
         return ChatResponse(
             response=response,

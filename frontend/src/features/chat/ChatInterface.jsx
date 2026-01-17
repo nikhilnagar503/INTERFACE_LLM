@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import WelcomePage from '../welcome/WelcomePage';
 import { API_URL } from '../../lib/api';
+import models from './models';
 import './ChatInterface.css';
 
 function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
@@ -12,12 +13,7 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
   const [searchModel, setSearchModel] = useState('');
   const messagesEndRef = useRef(null);
 
-  const models = {
-    openai: ['gpt-3.5-turbo', 'gpt-4', 'gpt-4-turbo', 'gpt-4o', 'gpt-4o-mini'],
-    anthropic: ['claude-3-opus', 'claude-3-sonnet', 'claude-3-haiku'],
-    gemini: ['gemini-pro', 'gemini-1.5-pro', 'gemini-1.5-flash'],
-    groq: ['mixtral-8x7b-32768', 'llama-2-70b-chat'],
-  };
+
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -72,7 +68,7 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
         throw new Error(configError.detail || 'Failed to configure LLM');
       }
 
-      // Now send the chat message
+      // Now send the chat message with conversation history
       const response = await fetch(`${API_URL}/api/chat`, {
         method: 'POST',
         headers: {
@@ -81,6 +77,7 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
         body: JSON.stringify({
           message: userMessage,
           session_id: sessionId,
+          history: messages, // Send entire conversation history for context
         }),
       });
 

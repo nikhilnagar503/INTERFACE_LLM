@@ -1,9 +1,12 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from ..providers.llm_providers import OpenAIProvider, GeminiProvider, AnthropicProvider, GroqProvider
+from providers.llm_providers import OpenAIProvider, GeminiProvider, AnthropicProvider, GroqProvider
 import os
 from typing import List, Dict
+import json
+import asyncio
 
 app = FastAPI(title="LLM Chatbot API", version="1.0.0")
 
@@ -173,6 +176,70 @@ def chat(request_data: ChatRequest):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+@app.post('/api/chat/stream', tags=["Chat"])
+async def chat_stream(request_data: ChatRequest):
+    """
+    Send a message to the configured LLM with streaming response
+    """
+    import asyncio
+    import time
+    
+    async def generate():
+        try:
+            message = request_data.message
+            session_id = request_data.session_id
+            history = request_data.history or []
+
+            if not message:
+                yield json.dumps({"error": "Message is required"}) + "\n"
+                return
+
+            if session_id not in sessions:
+                yield json.dumps({"error": "Session not configured. Please configure first."}) + "\n"
+                return
+
+            session = sessions[session_id]
+            provider = session['provider']
+            
+            # Use history from frontend if provided, otherwise use stored history
+            if history:
+                chat_history = history
+            else:
+                chat_history = session['chat_history']
+
+            # Get response from LLM
+            response = provider.chat(message, chat_history)
+
+            # Stream the response with proper timing
+            full_response = ""
+            # Split by words and stream each character with a small delay
+            words = response.split(' ')
+            for word_idx, word in enumerate(words):
+                for char_idx, char in enumerate(word):
+                    full_response += char
+                    yield json.dumps({"chunk": char}) + "\n"
+                    # Add small delay between characters for visual streaming effect
+                    await asyncio.sleep(0.002)
+                
+                # Add space after word (except last word)
+                if word_idx < len(words) - 1:
+                    full_response += ' '
+                    yield json.dumps({"chunk": " "}) + "\n"
+                    await asyncio.sleep(0.002)
+
+            # Update stored chat history after full response is generated
+            session['chat_history'].append({'role': 'user', 'content': message})
+            session['chat_history'].append({'role': 'assistant', 'content': full_response})
+
+            # Send completion signal
+            yield json.dumps({"done": True}) + "\n"
+
+        except Exception as e:
+            yield json.dumps({"error": str(e)}) + "\n"
+
+    return StreamingResponse(generate(), media_type="application/x-ndjson")
 
 
 @app.get('/api/history', response_model=HistoryResponse, tags=["Chat"])

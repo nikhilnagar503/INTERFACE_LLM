@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
 import WelcomePage from '../welcome/WelcomePage';
 import { API_URL } from '../../lib/api';
 import models from './models';
@@ -11,7 +12,45 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
   const [sessionId, setSessionId] = useState(`session-${Date.now()}`);
   const [showModelModal, setShowModelModal] = useState(false);
   const [searchModel, setSearchModel] = useState('');
+  const [currentProvider, setCurrentProvider] = useState('');
   const messagesEndRef = useRef(null);
+
+  // Get provider logo SVG path
+  const renderProviderLogo = (provider) => {
+    const logos = {
+      openai: '/logos/openai.svg',
+      anthropic: '/logos/anthropic.svg',
+      gemini: '/logos/gemini.svg',
+      groq: '/logos/groq.svg'
+    };
+    return logos[provider || currentProvider] || '/logos/openai.svg';
+  };
+
+  // Add contextual emojis to response
+  const enhanceWithEmojis = (text) => {
+    let enhanced = text;
+    
+    // Add emojis contextually based on content
+    enhanced = enhanced.replace(/(^|\n)(#{1,3})\s*([^\n]+)/g, (match, prefix, hashes, title) => {
+      let emoji = '';
+      const lowerTitle = title.toLowerCase();
+      
+      if (lowerTitle.includes('example') || lowerTitle.includes('demo')) emoji = '💡 ';
+      else if (lowerTitle.includes('note') || lowerTitle.includes('important')) emoji = '📌 ';
+      else if (lowerTitle.includes('warning') || lowerTitle.includes('caution')) emoji = '⚠️ ';
+      else if (lowerTitle.includes('tip') || lowerTitle.includes('hint')) emoji = '💭 ';
+      else if (lowerTitle.includes('step') || lowerTitle.includes('guide')) emoji = '📍 ';
+      else if (lowerTitle.includes('code') || lowerTitle.includes('syntax')) emoji = '💻 ';
+      else if (lowerTitle.includes('feature') || lowerTitle.includes('benefit')) emoji = '✅ ';
+      else if (lowerTitle.includes('error') || lowerTitle.includes('issue')) emoji = '❌ ';
+      else if (lowerTitle.includes('success') || lowerTitle.includes('complete')) emoji = '✨ ';
+      else if (lowerTitle.includes('question') || lowerTitle.includes('help')) emoji = '❓ ';
+      
+      return `${prefix}${hashes} ${emoji}${title}`;
+    });
+    
+    return enhanced;
+  };
 
 
 
@@ -40,6 +79,8 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
       if (selectedModel.includes('claude')) provider = 'anthropic';
       if (selectedModel.includes('gemini')) provider = 'gemini';
       if (selectedModel.includes('mixtral') || selectedModel.includes('llama')) provider = 'groq';
+      
+      setCurrentProvider(provider);
 
       // Get API key from storage
       const apiKeyKey = `api_key_${provider}`;
@@ -68,8 +109,18 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
         throw new Error(configError.detail || 'Failed to configure LLM');
       }
 
-      // Now send the chat message with conversation history
-      const response = await fetch(`${API_URL}/api/chat`, {
+      // Add empty assistant message that we'll stream into
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: '',
+          provider: provider,
+        },
+      ]);
+
+      // Now send the chat message with conversation history using streaming
+      const response = await fetch(`${API_URL}/api/chat/stream`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -81,20 +132,55 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
         }),
       });
 
-      const data = await response.json();
-
       if (!response.ok) {
-        throw new Error(data.detail || 'Failed to get response');
+        throw new Error('Failed to get streaming response');
       }
 
-      // Add assistant response to chat
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: data.response,
-        },
-      ]);
+      // Read the streaming response
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let streamedContent = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n');
+
+        for (const line of lines) {
+          if (!line) continue;
+
+          try {
+            const data = JSON.parse(line);
+
+            if (data.error) {
+              throw new Error(data.error);
+            }
+
+            if (data.chunk) {
+              streamedContent += data.chunk;
+              // Update the last assistant message with streamed content
+              setMessages((prev) => {
+                const updated = [...prev];
+                if (updated[updated.length - 1]?.role === 'assistant') {
+                  updated[updated.length - 1].content = enhanceWithEmojis(streamedContent);
+                  updated[updated.length - 1].provider = provider;
+                }
+                return updated;
+              });
+            }
+
+            if (data.done) {
+              // Streaming complete
+              break;
+            }
+          } catch (e) {
+            // Skip parsing errors for incomplete lines
+            continue;
+          }
+        }
+      }
     } catch (err) {
       setMessages((prev) => [
         ...prev,
@@ -335,32 +421,30 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
           <div key={index} className={`message message-${msg.role}`}>
             <div className="message-avatar">
               {msg.role === 'user' ? (
-                <i className="fas fa-user"></i>
+                '👤'
               ) : msg.role === 'error' ? (
-                <i className="fas fa-exclamation-triangle"></i>
+                '⚠️'
               ) : (
-                <i className="fas fa-robot"></i>
+                <img src={renderProviderLogo(msg.provider)} alt="AI Provider" className="provider-logo" />
               )}
             </div>
             <div className="message-content">
-              <div className="message-header">
-                {msg.role === 'user'
-                  ? 'You'
-                  : msg.role === 'error'
-                  ? 'Error'
-                  : 'Assistant'}
+              <div className="message-text">
+                {msg.role === 'user' || msg.role === 'error' ? (
+                  msg.content
+                ) : (
+                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                )}
               </div>
-              <div className="message-text">{msg.content}</div>
             </div>
           </div>
         ))}
         {loading && (
           <div className="message message-assistant">
             <div className="message-avatar">
-              <i className="fas fa-robot"></i>
+              <img src={renderProviderLogo(currentProvider)} alt="AI Provider" className="provider-logo" />
             </div>
             <div className="message-content">
-              <div className="message-header">Assistant</div>
               <div className="message-text typing">
                 <span></span>
                 <span></span>

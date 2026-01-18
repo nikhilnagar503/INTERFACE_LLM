@@ -7,6 +7,10 @@ import os
 from typing import List, Dict
 import json
 import asyncio
+from dotenv import load_dotenv
+
+# Load environment variables
+load_dotenv()
 
 app = FastAPI(title="LLM Chatbot API", version="1.0.0")
 
@@ -21,6 +25,47 @@ app.add_middleware(
 
 # Store active sessions (in production, use a database)
 sessions = {}
+
+# Default configuration from environment
+DEFAULT_PROVIDER = os.getenv('DEFAULT_PROVIDER', 'groq')
+DEFAULT_MODEL = os.getenv('DEFAULT_MODEL', 'mixtral-8x7b-32768')
+DEFAULT_API_KEY = os.getenv('DEFAULT_API_KEY', os.getenv('GROQ_API_KEY', ''))
+
+# Create a default session on startup
+def initialize_default_session():
+    """Initialize default session with environment configuration"""
+    if DEFAULT_API_KEY and DEFAULT_API_KEY != 'gsk_placeholder_for_testing':
+        try:
+            session_id = 'default'
+            provider = DEFAULT_PROVIDER.lower()
+            
+            if provider == 'openai':
+                llm_provider = OpenAIProvider(DEFAULT_API_KEY, DEFAULT_MODEL)
+            elif provider == 'gemini':
+                llm_provider = GeminiProvider(DEFAULT_API_KEY, DEFAULT_MODEL)
+            elif provider == 'anthropic':
+                llm_provider = AnthropicProvider(DEFAULT_API_KEY, DEFAULT_MODEL)
+            elif provider == 'groq':
+                llm_provider = GroqProvider(DEFAULT_API_KEY, DEFAULT_MODEL)
+            else:
+                return
+            
+            sessions[session_id] = {
+                'provider': llm_provider,
+                'chat_history': [],
+                'config': {
+                    'provider': provider,
+                    'model': DEFAULT_MODEL
+                }
+            }
+            print(f"✓ Default session initialized: {provider} / {DEFAULT_MODEL}")
+        except Exception as e:
+            print(f"✗ Failed to initialize default session: {str(e)}")
+
+# Initialize on startup
+@app.on_event("startup")
+async def startup():
+    initialize_default_session()
 
 # Pydantic models
 class ConfigureRequest(BaseModel):
@@ -42,6 +87,13 @@ class ConfigureResponse(BaseModel):
     provider: str
     model: str
     session_id: str
+
+class ConfigResponse(BaseModel):
+    """Response for config info"""
+    has_default: bool
+    default_provider: str = None
+    default_model: str = None
+    available_providers: List[str] = []
 
 class ChatResponse(BaseModel):
     response: str
@@ -79,6 +131,20 @@ def home():
         'docs': '/docs',
         'openapi_schema': '/openapi.json'
     }
+
+
+@app.get('/api/config', response_model=ConfigResponse, tags=["Configuration"])
+def get_config():
+    """
+    Get default configuration info
+    """
+    has_default = 'default' in sessions and DEFAULT_API_KEY and DEFAULT_API_KEY != 'gsk_placeholder_for_testing'
+    return ConfigResponse(
+        has_default=has_default,
+        default_provider=DEFAULT_PROVIDER if has_default else None,
+        default_model=DEFAULT_MODEL if has_default else None,
+        available_providers=["openai", "gemini", "anthropic", "groq"]
+    )
 
 
 @app.post('/api/configure', response_model=ConfigureResponse, tags=["Configuration"])

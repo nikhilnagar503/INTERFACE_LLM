@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import Sidebar from '../features/sidebar/Sidebar';
 import ChatInterface from '../features/chat/ChatInterface';
 import SettingsPage from '../features/settings/SettingsPage';
+import PromptLibrary from '../features/prompts/PromptLibrary';
 import './App.css';
 
 function App() {
@@ -27,6 +28,8 @@ function App() {
         return <ChatInterface selectedModel={selectedModel} setSelectedModel={setSelectedModel} apiKeys={apiKeys} />;
       case 'settings':
         return <SettingsPage apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} />;
+      case 'prompts':
+        return <PromptLibrary />;
       default:
         return <ChatInterface selectedModel={selectedModel} setSelectedModel={setSelectedModel} apiKeys={apiKeys} />;
     }
@@ -43,3 +46,4 @@ function App() {
 }
 
 export default App;
+

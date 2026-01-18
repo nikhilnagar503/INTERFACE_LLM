@@ -22,6 +22,14 @@ function Sidebar({ currentPage, setCurrentPage }) {
           <i className="fas fa-comments"></i>
           <span>Chat</span>
         </button>
+        <button
+          className={`nav-btn ${currentPage === 'prompts' ? 'active' : ''}`}
+          onClick={() => setCurrentPage('prompts')}
+          title="Prompts"
+        >
+          <i className="fas fa-book"></i>
+          <span>Prompts</span>
+        </button>
       </nav>
 
       <div className="sidebar-bottom">

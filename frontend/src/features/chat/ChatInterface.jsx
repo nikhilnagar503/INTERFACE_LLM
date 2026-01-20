@@ -97,8 +97,9 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys, session }) {
         ? { Authorization: `Bearer ${session.access_token}` }
         : {};
 
-      // Get API key from storage
-      const apiKeyKey = `api_key_${provider}`;
+      // Get API key from storage using user ID
+      const userId = session?.user?.id;
+      const apiKeyKey = `api_key_${provider}_${userId}`;
       const apiKey = localStorage.getItem(apiKeyKey);
 
       if (!apiKey) {

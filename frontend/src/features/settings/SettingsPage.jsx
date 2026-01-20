@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import './SettingsPage.css';
 
 function SettingsPage({ apiKeys, onSaveApiKeys }) {
   const [keys, setKeys] = useState(apiKeys);
+  const [isNewUser, setIsNewUser] = useState(false);
   const [showPasswords, setShowPasswords] = useState({
     openai: false,
     anthropic: false,
@@ -10,6 +11,12 @@ function SettingsPage({ apiKeys, onSaveApiKeys }) {
     groq: false,
   });
   const [saveStatus, setSaveStatus] = useState('');
+
+  useEffect(() => {
+    setKeys(apiKeys);
+    const hasAnyKey = Object.values(apiKeys).some(key => key !== '');
+    setIsNewUser(!hasAnyKey);
+  }, [apiKeys]);
 
   const providers = [
     { id: 'openai', name: 'OpenAI API Key', placeholder: 'sk-...' },
@@ -41,6 +48,15 @@ function SettingsPage({ apiKeys, onSaveApiKeys }) {
   return (
     <div className="settings-page">
       <div className="settings-container">
+        {isNewUser && (
+          <div className="welcome-banner">
+            <div className="welcome-icon">👋</div>
+            <div className="welcome-content">
+              <h2>Welcome to your LLM Interface!</h2>
+              <p>To get started, please configure your API keys below. You'll need at least one API key from OpenAI, Anthropic, Google (Gemini), or Groq.</p>
+            </div>
+          </div>
+        )}
         <div className="settings-header">
           <h1>Settings</h1>
           <p>Manage your API keys and preferences</p>

@@ -5,7 +5,7 @@ import { API_URL } from '../../lib/api';
 import models from './models';
 import './ChatInterface.css';
 
-function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
+function ChatInterface({ selectedModel, setSelectedModel, apiKeys, session }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -66,6 +66,17 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
     e.preventDefault();
     if (!input.trim() || loading) return;
 
+    if (!session?.access_token) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'error',
+          content: 'Please sign in on the Account tab before chatting.',
+        },
+      ]);
+      return;
+    }
+
     const userMessage = input.trim();
     setInput('');
 
@@ -82,6 +93,10 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
       
       setCurrentProvider(provider);
 
+      const authHeader = session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {};
+
       // Get API key from storage
       const apiKeyKey = `api_key_${provider}`;
       const apiKey = localStorage.getItem(apiKeyKey);
@@ -91,10 +106,13 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
       }
 
       // First, configure the backend if not already done
+      const cleanHistory = messages.filter((m) => m.role === 'user' || m.role === 'assistant');
+
       const configureResponse = await fetch(`${API_URL}/api/configure`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...authHeader,
         },
         body: JSON.stringify({
           provider: provider,
@@ -124,11 +142,12 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          ...authHeader,
         },
         body: JSON.stringify({
           message: userMessage,
           session_id: sessionId,
-          history: messages, // Send entire conversation history for context
+          history: cleanHistory, // Send filtered conversation history for context
         }),
       });
 

@@ -1,8 +1,12 @@
 import React from 'react';
+import { supabase } from '../../lib/supabaseClient';
 import './Sidebar.css';
 
+function Sidebar({ currentPage, setCurrentPage, session }) {
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+  };
 
-function Sidebar({ currentPage, setCurrentPage }) {
   return (
     <aside className="sidebar">
       <div className="sidebar-header">
@@ -10,7 +14,7 @@ function Sidebar({ currentPage, setCurrentPage }) {
           <i className="fas fa-cube"></i> 
           
         </div>
-        <h2>Interface</h2>
+        <h2>INTERFACE</h2>
       </div>
 
       <nav className="sidebar-nav">
@@ -34,13 +38,16 @@ function Sidebar({ currentPage, setCurrentPage }) {
           <span>Settings</span>
         </button>
         
-        <div className="profile-section">
+        <div className="profile-section" onClick={handleSignOut} style={{ cursor: 'pointer' }} title="Click to sign out">
           <div className="profile-avatar">
             <i className="fas fa-user"></i>
           </div>
           <div className="profile-info">
-            <p className="profile-name">User</p>
-            <p className="profile-email">user@interface.com</p>
+            <p className="profile-name">Authenticated</p>
+            <p className="profile-email">{session?.user?.email || 'user@example.com'}</p>
+            <p className="profile-signout">
+              <i className="fas fa-sign-out-alt"></i> Sign out
+            </p>
           </div>
         </div>
       </div>

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import PromptMarketplace from './PromptMarketplace';
 import './PromptLibrary.css';
 
 const BUILT_IN_PROMPTS = [
@@ -61,12 +62,18 @@ const BUILT_IN_PROMPTS = [
 ];
 
 function PromptLibrary() {
-  const [prompts, setPrompts] = useState(BUILT_IN_PROMPTS);
+  const [prompts, setPrompts] = useState(() => {
+    // Load from localStorage if available, otherwise start empty
+    const saved = localStorage.getItem('userPrompts');
+    return saved ? JSON.parse(saved) : [];
+  });
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
   const [selectedPrompt, setSelectedPrompt] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [showMarketplace, setShowMarketplace] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [showNotification, setShowNotification] = useState(false);
   const [favorites, setFavorites] = useState([]);
   const [newPrompt, setNewPrompt] = useState({
     title: '',
@@ -82,8 +89,7 @@ function PromptLibrary() {
   const filteredPrompts = prompts.filter(prompt => {
     const matchesSearch = prompt.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
       prompt.description.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesTag = !selectedTag || prompt.tags.includes(selectedTag);
-    return matchesSearch && matchesTag;
+    return matchesSearch;
   });
 
   const isFavorite = selectedPrompt && favorites.includes(selectedPrompt.id);
@@ -107,9 +113,15 @@ function PromptLibrary() {
       ...newPrompt,
       tags: newPrompt.tags.length > 0 ? newPrompt.tags : ['Custom']
     };
-    setPrompts([...prompts, prompt]);
+    const updatedPrompts = [...prompts, prompt];
+    setPrompts(updatedPrompts);
+    localStorage.setItem('userPrompts', JSON.stringify(updatedPrompts));
     setNewPrompt({ title: '', description: '', content: '', tags: [] });
     setShowAddModal(false);
+    
+    // Show notification
+    setShowNotification(true);
+    setTimeout(() => setShowNotification(false), 3000);
   };
 
   const usePrompt = () => {
@@ -117,6 +129,22 @@ function PromptLibrary() {
     // Store in localStorage for chat component to use
     localStorage.setItem('selectedPrompt', JSON.stringify(selectedPrompt));
     window.location.href = '/';
+  };
+
+  const handleMarketplaceSelect = (template) => {
+    // Add the selected template to prompts if not already there
+    const exists = prompts.some(p => p.id === template.id);
+    if (!exists) {
+      const updatedPrompts = [...prompts, template];
+      setPrompts(updatedPrompts);
+      localStorage.setItem('userPrompts', JSON.stringify(updatedPrompts));
+      
+      // Show notification
+      setShowNotification(true);
+      setTimeout(() => setShowNotification(false), 3000);
+    }
+    setSelectedPrompt(template);
+    setShowMarketplace(false);
   };
 
   const copyToClipboard = () => {
@@ -128,6 +156,12 @@ function PromptLibrary() {
 
   return (
     <div className="prompt-library">
+      {showNotification && (
+        <div className="notification">
+          ✓ Added to your prompt library
+        </div>
+      )}
+      
       <div className="library-header">
         <div className="header-content">
           <h1>📚 Prompt Library</h1>
@@ -137,7 +171,7 @@ function PromptLibrary() {
           <button className="btn-add" onClick={() => setShowAddModal(true)}>
             ➕ Add prompt
           </button>
-          <button className="btn-browse">
+          <button className="btn-browse" onClick={() => setShowMarketplace(true)}>
             📖 Browse prompts ({filteredPrompts.length})
           </button>
         </div>
@@ -155,51 +189,44 @@ function PromptLibrary() {
               className="search-input"
             />
           </div>
-
-          <div className="tags-section">
-            <h3>Filter by tags</h3>
-            <div className="tags-list">
-              <button
-                className={`tag-btn ${!selectedTag ? 'active' : ''}`}
-                onClick={() => setSelectedTag('')}
-              >
-                All Tags
-              </button>
-              {allTags.map(tag => (
-                <button
-                  key={tag}
-                  className={`tag-btn ${selectedTag === tag ? 'active' : ''}`}
-                  onClick={() => setSelectedTag(tag)}
-                >
-                  {tag}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="features-section">
-            <div className="feature-card reusable">
-              <span className="icon">📋</span>
-              <span>Reusable Prompts</span>
-            </div>
-            <div className="feature-card variables">
-              <span className="icon">🔤</span>
-              <span>Variables Support</span>
-            </div>
-            <div className="feature-card organize">
-              <span className="icon">🏷️</span>
-              <span>Organize with Tags</span>
-            </div>
-            <div className="feature-card favorites">
-              <span className="icon">⭐</span>
-              <span>Quick Favorites</span>
-            </div>
-          </div>
         </div>
 
         {/* Main Content */}
         <div className="library-main">
-          {filteredPrompts.length === 0 && (
+          {prompts.length === 0 && searchTerm === '' && (
+            <div className="empty-state">
+              <h2>No prompts yet</h2>
+              <p>Save your frequently used prompts for quick access and reuse</p>
+              <div className="empty-actions">
+                <button className="btn-primary" onClick={() => setShowAddModal(true)}>
+                  Create new prompt
+                </button>
+                <button className="btn-secondary" onClick={() => setShowMarketplace(true)}>
+                  Browse prompts
+                </button>
+              </div>
+              <div className="features-grid">
+                <div className="feature">
+                  <span className="icon">📋</span>
+                  <span>Reusable Prompts</span>
+                </div>
+                <div className="feature">
+                  <span className="icon">🔤</span>
+                  <span>Variables Support</span>
+                </div>
+                <div className="feature">
+                  <span className="icon">🏷️</span>
+                  <span>Organize with Tags</span>
+                </div>
+                <div className="feature">
+                  <span className="icon">⭐</span>
+                  <span>Quick Favorites</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {filteredPrompts.length === 0 && searchTerm !== '' && (
             <div className="empty-state">
               <h2>No prompts found</h2>
               <p>Try adjusting your search or filters</p>
@@ -350,7 +377,13 @@ function PromptLibrary() {
           </div>
         </div>
       )}
-    </div>
+      {/* Prompt Marketplace Modal */}
+      <PromptMarketplace
+        isOpen={showMarketplace}
+        onClose={() => setShowMarketplace(false)}
+        onSelectPrompt={handleMarketplaceSelect}
+        selectedPrompts={[]}
+      />    </div>
   );
 }
 

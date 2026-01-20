@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import ReactMarkdown from 'react-markdown';
 import WelcomePage from '../welcome/WelcomePage';
+import PromptMarketplace from '../prompts/PromptMarketplace';
 import { API_URL } from '../../lib/api';
 import models from './models';
 import './ChatInterface.css';
@@ -13,6 +14,8 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
   const [showModelModal, setShowModelModal] = useState(false);
   const [searchModel, setSearchModel] = useState('');
   const [currentProvider, setCurrentProvider] = useState('');
+  const [showPromptMarketplace, setShowPromptMarketplace] = useState(false);
+  const [selectedPrompts, setSelectedPrompts] = useState([]);
   const messagesEndRef = useRef(null);
 
   // Get provider logo SVG path
@@ -61,6 +64,29 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
   useEffect(() => {
     scrollToBottom();
   }, [messages]);
+
+  /**
+   * Handle prompt selection from the marketplace
+   * Adds the selected prompt template to the input
+   */
+  const handleSelectPromptTemplate = (template) => {
+    // Add the prompt to the input field for the user to execute
+    setInput(template.content);
+    setSelectedPrompts((prev) => 
+      prev.includes(template.id) 
+        ? prev.filter(id => id !== template.id)
+        : [...prev, template.id]
+    );
+    // Keep marketplace open for multiple selections
+  };
+
+  /**
+   * Close marketplace and clear selected prompts
+   */
+  const handleCloseMarketplace = () => {
+    setShowPromptMarketplace(false);
+    setSelectedPrompts([]);
+  };
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -278,8 +304,8 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
             <button
               type="button"
               className="action-btn"
-              title="Add"
-              onClick={() => {}}
+              title="Browse Templates"
+              onClick={() => setShowPromptMarketplace(true)}
             >
               <i className="fas fa-plus"></i>
             </button>
@@ -537,6 +563,14 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
           </div>
         </form>
       </div>
+
+      {/* Prompt Marketplace Modal */}
+      <PromptMarketplace
+        isOpen={showPromptMarketplace}
+        onClose={handleCloseMarketplace}
+        onSelectPrompt={handleSelectPromptTemplate}
+        selectedPrompts={selectedPrompts}
+      />
     </div>
   );
 }

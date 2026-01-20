@@ -721,3 +721,6 @@
     width: 95%;
   }
 }
+.prompt-card .card-title {
+  color: #f3f7f3; /* near white */
+}

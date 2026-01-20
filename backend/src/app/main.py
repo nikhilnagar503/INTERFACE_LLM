@@ -2,7 +2,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
-from providers.llm_providers import OpenAIProvider, GeminiProvider, AnthropicProvider, GroqProvider
+from src.providers.llm_providers import OpenAIProvider, GeminiProvider, AnthropicProvider, GroqProvider
 import os
 from typing import List, Dict
 import json

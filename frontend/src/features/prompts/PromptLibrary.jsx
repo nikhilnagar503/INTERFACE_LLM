@@ -61,7 +61,7 @@ const BUILT_IN_PROMPTS = [
   }
 ];
 
-function PromptLibrary() {
+function PromptLibrary({ onUsePrompt }) {
   const [prompts, setPrompts] = useState(() => {
     // Load from localStorage if available, otherwise start empty
     const saved = localStorage.getItem('userPrompts');
@@ -128,7 +128,13 @@ function PromptLibrary() {
     if (!selectedPrompt) return;
     // Store in localStorage for chat component to use
     localStorage.setItem('selectedPrompt', JSON.stringify(selectedPrompt));
-    window.location.href = '/';
+    // Navigate to chat using the callback
+    if (onUsePrompt) {
+      onUsePrompt();
+    } else {
+      // Fallback to window.location.href if callback not provided
+      window.location.href = '/';
+    }
   };
 
   const handleMarketplaceSelect = (template) => {

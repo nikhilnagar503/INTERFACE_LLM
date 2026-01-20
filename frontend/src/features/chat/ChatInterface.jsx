@@ -6,7 +6,7 @@ import { API_URL } from '../../lib/api';
 import models from './models';
 import './ChatInterface.css';
 
-function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
+function ChatInterface({ selectedModel, setSelectedModel, apiKeys, initialPrompt, onPromptUsed }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,6 +17,16 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
   const [showPromptMarketplace, setShowPromptMarketplace] = useState(false);
   const [selectedPrompts, setSelectedPrompts] = useState([]);
   const messagesEndRef = useRef(null);
+
+  // Load initial prompt from library when component mounts
+  useEffect(() => {
+    if (initialPrompt && initialPrompt.content) {
+      setInput(initialPrompt.content);
+      if (onPromptUsed) {
+        onPromptUsed();
+      }
+    }
+  }, [initialPrompt, onPromptUsed]);
 
   // Get provider logo SVG path
   const renderProviderLogo = (provider) => {

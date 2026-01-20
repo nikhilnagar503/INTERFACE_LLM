@@ -26,23 +26,29 @@ function PromptGrid({ prompts, selectedPrompts, onSelectPrompt, isLoading }) {
     return (
       <div className="prompt-grid empty">
         <div className="empty-state">
-          <p>No prompts found</p>
+          <p>📭 No prompts found</p>
+          <p style={{ fontSize: '13px', color: '#999', marginTop: '8px' }}>Try adjusting your search or filters</p>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="prompt-grid">
-      {prompts.map(prompt => (
-        <PromptCard
-          key={prompt.id}
-          prompt={prompt}
-          onSelect={onSelectPrompt}
-          isSelected={selectedPrompts.includes(prompt.id)}
-        />
-      ))}
-    </div>
+    <>
+      <div style={{ marginBottom: '12px', fontSize: '14px', color: '#555', fontWeight: '500' }}>
+        Found <strong>{prompts.length}</strong> template{prompts.length !== 1 ? 's' : ''}
+      </div>
+      <div className="prompt-grid">
+        {prompts.map(prompt => (
+          <PromptCard
+            key={prompt.id}
+            prompt={prompt}
+            onSelect={onSelectPrompt}
+            isSelected={selectedPrompts.includes(prompt.id)}
+          />
+        ))}
+      </div>
+    </>
   );
 }
 

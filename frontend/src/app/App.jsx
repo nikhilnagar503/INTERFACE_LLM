@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import Sidebar from '../features/sidebar/Sidebar';
+import SessionSidebar from '../features/chat/SessionSidebar';
 import ChatInterface from '../features/chat/ChatInterface';
 import SettingsPage from '../features/settings/SettingsPage';
 import AuthPage from '../features/auth/AuthPage';
@@ -17,6 +18,8 @@ function App() {
     groq: '',
   });
   const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo');
+  const [sessionSidebarExpanded, setSessionSidebarExpanded] = useState(true);
+  const [currentSessionId, setCurrentSessionId] = useState(null);
 
   useEffect(() => {
     const loadSession = async () => {
@@ -78,6 +81,16 @@ function App() {
     }
   };
 
+  const handleNewChat = () => {
+    setCurrentSessionId(null);
+    // Will trigger a new session in ChatInterface
+  };
+
+  const handleSelectSession = (session) => {
+    setCurrentSessionId(session.id);
+    // Optionally load session data here
+  };
+
   const renderPage = () => {
     if (!session && currentPage !== 'auth') {
       return <AuthPage session={session} onAuthComplete={(s) => { setSession(s); setCurrentPage('chat'); }} />;
@@ -93,6 +106,7 @@ function App() {
             setSelectedModel={setSelectedModel}
             apiKeys={apiKeys}
             session={session}
+            sessionId={currentSessionId}
           />
         );
       case 'settings':
@@ -104,6 +118,7 @@ function App() {
             setSelectedModel={setSelectedModel}
             apiKeys={apiKeys}
             session={session}
+            sessionId={currentSessionId}
           />
         );
     }
@@ -119,8 +134,25 @@ function App() {
 
   return (
     <div className="app">
-      {session && <Sidebar currentPage={currentPage} setCurrentPage={setCurrentPage} session={session} />}
-      <main className="app-main" style={{ marginLeft: session ? '280px' : '0' }}>
+      {session && (
+        <Sidebar 
+          currentPage={currentPage} 
+          setCurrentPage={setCurrentPage} 
+          session={session} 
+          onNewChat={handleNewChat}
+          onExpandSessionSidebar={() => setSessionSidebarExpanded(true)}
+        />
+      )}
+      {session && currentPage === 'chat' && (
+        <SessionSidebar
+          isExpanded={sessionSidebarExpanded}
+          onToggle={() => setSessionSidebarExpanded(!sessionSidebarExpanded)}
+          onNewChat={handleNewChat}
+          onSelectSession={handleSelectSession}
+          currentSessionId={currentSessionId}
+        />
+      )}
+      <main className="app-main">
         {renderPage()}
       </main>
     </div>

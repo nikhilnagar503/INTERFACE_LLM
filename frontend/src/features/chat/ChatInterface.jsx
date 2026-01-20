@@ -5,15 +5,42 @@ import { API_URL } from '../../lib/api';
 import models from './models';
 import './ChatInterface.css';
 
-function ChatInterface({ selectedModel, setSelectedModel, apiKeys, session }) {
+function ChatInterface({ selectedModel, setSelectedModel, apiKeys, session, sessionId: propSessionId }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sessionId, setSessionId] = useState(`session-${Date.now()}`);
+  const [sessionId, setSessionId] = useState(propSessionId || `session-${Date.now()}`);
   const [showModelModal, setShowModelModal] = useState(false);
   const [searchModel, setSearchModel] = useState('');
   const [currentProvider, setCurrentProvider] = useState('');
   const messagesEndRef = useRef(null);
+
+  // Save session to localStorage whenever messages change
+  useEffect(() => {
+    if (messages.length > 0 && messages.some(m => m.role === 'assistant')) {
+      const sessionTitle = messages[0]?.content?.substring(0, 50) || 'Chat';
+      const sessionPreview = messages[1]?.content?.substring(0, 60) || 'New chat';
+      
+      const session = {
+        id: sessionId,
+        title: sessionTitle,
+        preview: sessionPreview,
+        timestamp: new Date().toISOString(),
+        messages: messages,
+      };
+
+      const allSessions = JSON.parse(localStorage.getItem('chat_sessions') || '[]');
+      const existingIndex = allSessions.findIndex(s => s.id === sessionId);
+      
+      if (existingIndex > -1) {
+        allSessions[existingIndex] = session;
+      } else {
+        allSessions.push(session);
+      }
+
+      localStorage.setItem('chat_sessions', JSON.stringify(allSessions));
+    }
+  }, [messages, sessionId]);
 
   // Get provider logo SVG path
   const renderProviderLogo = (provider) => {

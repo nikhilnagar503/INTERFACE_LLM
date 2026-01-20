@@ -2,9 +2,23 @@ import React from 'react';
 import { supabase } from '../../lib/supabaseClient';
 import './Sidebar.css';
 
-function Sidebar({ currentPage, setCurrentPage, session }) {
+function Sidebar({ currentPage, setCurrentPage, session, onNewChat, onExpandSessionSidebar }) {
   const handleSignOut = async () => {
     await supabase.auth.signOut();
+  };
+
+  const handleNewChat = () => {
+    setCurrentPage('chat');
+    if (onNewChat) {
+      onNewChat();
+    }
+  };
+
+  const handleChatClick = () => {
+    setCurrentPage('chat');
+    if (onExpandSessionSidebar) {
+      onExpandSessionSidebar();
+    }
   };
 
   return (
@@ -19,9 +33,20 @@ function Sidebar({ currentPage, setCurrentPage, session }) {
 
       <nav className="sidebar-nav">
         <button
+          className="nav-btn new-chat-nav-btn"
+          onClick={handleNewChat}
+          title="New Chat"
+          data-tooltip="New Chat"
+        >
+          <i className="fas fa-plus"></i>
+          <span>New Chat</span>
+        </button>
+
+        <button
           className={`nav-btn ${currentPage === 'chat' ? 'active' : ''}`}
-          onClick={() => setCurrentPage('chat')}
+          onClick={handleChatClick}
           title="Chat"
+          data-tooltip="Chat"
         >
           <i className="fas fa-comments"></i>
           <span>Chat</span>

@@ -4,6 +4,7 @@ import SessionSidebar from '../features/chat/SessionSidebar';
 import ChatInterface from '../features/chat/ChatInterface';
 import SettingsPage from '../features/settings/SettingsPage';
 import AuthPage from '../features/auth/AuthPage';
+import ProfilePage from '../features/profile/ProfilePage';
 import { supabase } from '../lib/supabaseClient';
 import './App.css';
 
@@ -91,6 +92,22 @@ function App() {
     // Optionally load session data here
   };
 
+  const handleSignOut = async () => {
+    await supabase.auth.signOut();
+    setSession(null);
+    setCurrentPage('auth');
+  };
+
+  const handleUpdateName = async (name) => {
+    const { data, error } = await supabase.auth.updateUser({
+      data: { full_name: name },
+    });
+    if (!error && data?.user) {
+      setSession((prev) => (prev ? { ...prev, user: data.user } : prev));
+    }
+    return { error };
+  };
+
   const renderPage = () => {
     if (!session && currentPage !== 'auth') {
       return <AuthPage session={session} onAuthComplete={(s) => { setSession(s); setCurrentPage('chat'); }} />;
@@ -111,6 +128,8 @@ function App() {
         );
       case 'settings':
         return <SettingsPage apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} />;
+      case 'profile':
+        return <ProfilePage session={session} onSignOut={handleSignOut} onUpdateName={handleUpdateName} />;
       default:
         return (
           <ChatInterface

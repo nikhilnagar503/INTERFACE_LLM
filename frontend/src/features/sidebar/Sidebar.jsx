@@ -1,12 +1,7 @@
 import React from 'react';
-import { supabase } from '../../lib/supabaseClient';
 import './Sidebar.css';
 
 function Sidebar({ currentPage, setCurrentPage, session, onNewChat, onExpandSessionSidebar }) {
-  const handleSignOut = async () => {
-    await supabase.auth.signOut();
-  };
-
   const handleNewChat = () => {
     setCurrentPage('chat');
     if (onNewChat) {
@@ -62,19 +57,17 @@ function Sidebar({ currentPage, setCurrentPage, session, onNewChat, onExpandSess
           <i className="fas fa-cog"></i>
           <span>Settings</span>
         </button>
-        
-        <div className="profile-section" onClick={handleSignOut} style={{ cursor: 'pointer' }} title="Click to sign out">
+
+        <button
+          className={`nav-btn profile-nav-btn ${currentPage === 'profile' ? 'active' : ''}`}
+          onClick={() => setCurrentPage('profile')}
+          title="Profile"
+        >
           <div className="profile-avatar">
             <i className="fas fa-user"></i>
           </div>
-          <div className="profile-info">
-            <p className="profile-name">Authenticated</p>
-            <p className="profile-email">{session?.user?.email || 'user@example.com'}</p>
-            <p className="profile-signout">
-              <i className="fas fa-sign-out-alt"></i> Sign out
-            </p>
-          </div>
-        </div>
+          <span>Profile</span>
+        </button>
       </div>
     </aside>
   );

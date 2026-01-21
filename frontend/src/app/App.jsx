@@ -1,8 +1,13 @@
+<<<<<<< HEAD
 import React, { useEffect, useState } from 'react';
+=======
+import React, { useState, useEffect } from 'react';
+>>>>>>> feature/prompt-library
 import Sidebar from '../features/sidebar/Sidebar';
 import SessionSidebar from '../features/chat/SessionSidebar';
 import ChatInterface from '../features/chat/ChatInterface';
 import SettingsPage from '../features/settings/SettingsPage';
+<<<<<<< HEAD
 import AuthPage from '../features/auth/AuthPage';
 import ProfilePage from '../features/profile/ProfilePage';
 import { supabase } from '../lib/supabaseClient';
@@ -12,6 +17,17 @@ function App() {
   const [currentPage, setCurrentPage] = useState('auth');
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
+=======
+import PromptLibrary from '../features/prompts/PromptLibrary';
+import './App.css';
+
+function App() {
+  const [currentPage, setCurrentPage] = useState(() => {
+    // Check if a prompt was selected and stored in localStorage
+    const selectedPrompt = localStorage.getItem('selectedPrompt');
+    return selectedPrompt ? 'chat' : 'chat';
+  });
+>>>>>>> feature/prompt-library
   const [apiKeys, setApiKeys] = useState({
     openai: '',
     anthropic: '',
@@ -19,8 +35,27 @@ function App() {
     groq: '',
   });
   const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo');
+<<<<<<< HEAD
   const [sessionSidebarExpanded, setSessionSidebarExpanded] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState(null);
+=======
+  const [promptFromLibrary, setPromptFromLibrary] = useState(null);
+
+  // Check for selected prompt from library on mount and when currentPage changes
+  useEffect(() => {
+    const selectedPrompt = localStorage.getItem('selectedPrompt');
+    if (selectedPrompt && currentPage === 'chat') {
+      try {
+        const promptData = JSON.parse(selectedPrompt);
+        setPromptFromLibrary(promptData);
+        // Clear the localStorage after reading it
+        localStorage.removeItem('selectedPrompt');
+      } catch (error) {
+        console.error('Error parsing selected prompt:', error);
+      }
+    }
+  }, [currentPage]);
+>>>>>>> feature/prompt-library
 
   useEffect(() => {
     const loadSession = async () => {
@@ -51,6 +86,7 @@ function App() {
       }
     });
 
+<<<<<<< HEAD
     return () => listener?.subscription?.unsubscribe();
   }, []);
 
@@ -70,6 +106,34 @@ function App() {
       setTimeout(() => {
         setCurrentPage('settings');
       }, 500);
+=======
+  const renderPage = () => {
+    switch (currentPage) {
+      case 'chat':
+        return (
+          <ChatInterface 
+            selectedModel={selectedModel} 
+            setSelectedModel={setSelectedModel} 
+            apiKeys={apiKeys}
+            initialPrompt={promptFromLibrary}
+            onPromptUsed={() => setPromptFromLibrary(null)}
+          />
+        );
+      case 'settings':
+        return <SettingsPage apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} />;
+      case 'prompts':
+        return <PromptLibrary onUsePrompt={() => setCurrentPage('chat')} />;
+      default:
+        return (
+          <ChatInterface 
+            selectedModel={selectedModel} 
+            setSelectedModel={setSelectedModel} 
+            apiKeys={apiKeys}
+            initialPrompt={promptFromLibrary}
+            onPromptUsed={() => setPromptFromLibrary(null)}
+          />
+        );
+>>>>>>> feature/prompt-library
     }
   };
 
@@ -179,3 +243,4 @@ function App() {
 }
 
 export default App;
+

@@ -1,15 +1,11 @@
-<<<<<<< HEAD
-import React, { useEffect, useState } from 'react';
-=======
 import React, { useState, useEffect } from 'react';
->>>>>>> feature/prompt-library
 import Sidebar from '../features/sidebar/Sidebar';
 import SessionSidebar from '../features/chat/SessionSidebar';
 import ChatInterface from '../features/chat/ChatInterface';
 import SettingsPage from '../features/settings/SettingsPage';
-<<<<<<< HEAD
 import AuthPage from '../features/auth/AuthPage';
 import ProfilePage from '../features/profile/ProfilePage';
+import PromptLibrary from '../features/prompts/PromptLibrary';
 import { supabase } from '../lib/supabaseClient';
 import './App.css';
 
@@ -17,17 +13,6 @@ function App() {
   const [currentPage, setCurrentPage] = useState('auth');
   const [session, setSession] = useState(null);
   const [loading, setLoading] = useState(true);
-=======
-import PromptLibrary from '../features/prompts/PromptLibrary';
-import './App.css';
-
-function App() {
-  const [currentPage, setCurrentPage] = useState(() => {
-    // Check if a prompt was selected and stored in localStorage
-    const selectedPrompt = localStorage.getItem('selectedPrompt');
-    return selectedPrompt ? 'chat' : 'chat';
-  });
->>>>>>> feature/prompt-library
   const [apiKeys, setApiKeys] = useState({
     openai: '',
     anthropic: '',
@@ -35,10 +20,8 @@ function App() {
     groq: '',
   });
   const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo');
-<<<<<<< HEAD
   const [sessionSidebarExpanded, setSessionSidebarExpanded] = useState(true);
   const [currentSessionId, setCurrentSessionId] = useState(null);
-=======
   const [promptFromLibrary, setPromptFromLibrary] = useState(null);
 
   // Check for selected prompt from library on mount and when currentPage changes
@@ -55,7 +38,6 @@ function App() {
       }
     }
   }, [currentPage]);
->>>>>>> feature/prompt-library
 
   useEffect(() => {
     const loadSession = async () => {
@@ -86,7 +68,6 @@ function App() {
       }
     });
 
-<<<<<<< HEAD
     return () => listener?.subscription?.unsubscribe();
   }, []);
 
@@ -106,34 +87,6 @@ function App() {
       setTimeout(() => {
         setCurrentPage('settings');
       }, 500);
-=======
-  const renderPage = () => {
-    switch (currentPage) {
-      case 'chat':
-        return (
-          <ChatInterface 
-            selectedModel={selectedModel} 
-            setSelectedModel={setSelectedModel} 
-            apiKeys={apiKeys}
-            initialPrompt={promptFromLibrary}
-            onPromptUsed={() => setPromptFromLibrary(null)}
-          />
-        );
-      case 'settings':
-        return <SettingsPage apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} />;
-      case 'prompts':
-        return <PromptLibrary onUsePrompt={() => setCurrentPage('chat')} />;
-      default:
-        return (
-          <ChatInterface 
-            selectedModel={selectedModel} 
-            setSelectedModel={setSelectedModel} 
-            apiKeys={apiKeys}
-            initialPrompt={promptFromLibrary}
-            onPromptUsed={() => setPromptFromLibrary(null)}
-          />
-        );
->>>>>>> feature/prompt-library
     }
   };
 
@@ -188,12 +141,16 @@ function App() {
             apiKeys={apiKeys}
             session={session}
             sessionId={currentSessionId}
+            initialPrompt={promptFromLibrary}
+            onPromptUsed={() => setPromptFromLibrary(null)}
           />
         );
       case 'settings':
         return <SettingsPage apiKeys={apiKeys} onSaveApiKeys={handleSaveApiKeys} />;
       case 'profile':
         return <ProfilePage session={session} onSignOut={handleSignOut} onUpdateName={handleUpdateName} />;
+      case 'prompts':
+        return <PromptLibrary onUsePrompt={() => setCurrentPage('chat')} />;
       default:
         return (
           <ChatInterface
@@ -202,6 +159,8 @@ function App() {
             apiKeys={apiKeys}
             session={session}
             sessionId={currentSessionId}
+            initialPrompt={promptFromLibrary}
+            onPromptUsed={() => setPromptFromLibrary(null)}
           />
         );
     }

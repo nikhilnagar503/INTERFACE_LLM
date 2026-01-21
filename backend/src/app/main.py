@@ -11,8 +11,8 @@ from dotenv import load_dotenv
 # Load environment variables
 load_dotenv()
 
-from app.core.config import settings
-from app.routes import auth, chat, health
+from src.app.core.config import settings
+from src.app.routes import auth, chat, health
 
 app = FastAPI(title="LLM Chatbot API", version="1.1.0")
 

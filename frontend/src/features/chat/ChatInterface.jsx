@@ -6,7 +6,15 @@ import { API_URL } from '../../lib/api';
 import models from './models';
 import './ChatInterface.css';
 
-function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
+function ChatInterface({
+  selectedModel,
+  setSelectedModel,
+  apiKeys,
+  session,
+  sessionId: propSessionId,
+  initialPrompt,
+  onPromptUsed,
+}) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
@@ -17,6 +25,19 @@ function ChatInterface({ selectedModel, setSelectedModel, apiKeys }) {
   const [showPromptMarketplace, setShowPromptMarketplace] = useState(false);
   const [selectedPrompts, setSelectedPrompts] = useState([]);
   const messagesEndRef = useRef(null);
+
+  useEffect(() => {
+    if (propSessionId) {
+      setSessionId(propSessionId);
+    }
+  }, [propSessionId]);
+
+  useEffect(() => {
+    if (initialPrompt?.content) {
+      setInput(initialPrompt.content);
+      onPromptUsed?.();
+    }
+  }, [initialPrompt, onPromptUsed]);
 
   // Get provider logo SVG path
   const renderProviderLogo = (provider) => {

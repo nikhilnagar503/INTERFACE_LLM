@@ -5,9 +5,9 @@ from fastapi import APIRouter, Depends, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 
-from app.core.supabase_client import get_current_user
-from app.services.session_store import session_store
-from providers.llm_providers import AnthropicProvider, GeminiProvider, GroqProvider, OpenAIProvider
+from src.app.core.supabase_client import get_current_user
+from src.app.services.session_store import session_store
+from src.providers.llm_providers import AnthropicProvider, GeminiProvider, GroqProvider, OpenAIProvider
 
 router = APIRouter(prefix="/api", tags=["Chat"])
 

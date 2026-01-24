@@ -10,11 +10,83 @@ function AuthPage({ session, onAuthComplete }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Streaming text states
+  const [streamedTitle, setStreamedTitle] = useState('');
+  const [streamedQuestion, setStreamedQuestion] = useState('');
+  const [streamedAnswer, setStreamedAnswer] = useState('');
+  const [streamedNote, setStreamedNote] = useState('');
+  const [showChat, setShowChat] = useState(false);
+
+  const fullTitle = "Connect Your APIs. Build Intelligent Agents. Experience the Magic.";
+  const fullQuestion = "How can I leverage AI agents with multiple models?";
+  const fullAnswer = "Seamlessly orchestrate intelligent agents across OpenAI, Anthropic, Gemini, and Groq. Integrate MCP tools, plugins, and custom workflows to automate complex tasks with a unified interface.";
+  const fullNote = "Powered by advanced LLM capabilities and intelligent automation.";
 
   useEffect(() => {
     setError('');
     setMessage('');
   }, [mode]);
+
+  // Streaming effect for hero section
+  useEffect(() => {
+    let titleIndex = 0;
+    let questionIndex = 0;
+    let answerIndex = 0;
+    let noteIndex = 0;
+
+    // Stream title
+    const titleInterval = setInterval(() => {
+      if (titleIndex < fullTitle.length) {
+        setStreamedTitle(fullTitle.slice(0, titleIndex + 1));
+        titleIndex++;
+      } else {
+        clearInterval(titleInterval);
+        // Start chat after title completes
+        setTimeout(() => {
+          setShowChat(true);
+          
+          // Stream question
+          const questionInterval = setInterval(() => {
+            if (questionIndex < fullQuestion.length) {
+              setStreamedQuestion(fullQuestion.slice(0, questionIndex + 1));
+              questionIndex++;
+            } else {
+              clearInterval(questionInterval);
+              
+              // Stream answer
+              setTimeout(() => {
+                const answerInterval = setInterval(() => {
+                  if (answerIndex < fullAnswer.length) {
+                    setStreamedAnswer(fullAnswer.slice(0, answerIndex + 1));
+                    answerIndex++;
+                  } else {
+                    clearInterval(answerInterval);
+                    
+                    // Stream note
+                    setTimeout(() => {
+                      const noteInterval = setInterval(() => {
+                        if (noteIndex < fullNote.length) {
+                          setStreamedNote(fullNote.slice(0, noteIndex + 1));
+                          noteIndex++;
+                        } else {
+                          clearInterval(noteInterval);
+                        }
+                      }, 20);
+                    }, 300);
+                  }
+                }, 15);
+              }, 500);
+            }
+          }, 30);
+        }, 500);
+      }
+    }, 30);
+
+    return () => {
+      clearInterval(titleInterval);
+    };
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -60,24 +132,23 @@ function AuthPage({ session, onAuthComplete }) {
     }
   };
 
-  const handleMagicLink = async () => {
-    setLoading(true);
-    setError('');
-    setMessage('');
-    try {
-      const { error: magicError } = await supabase.auth.signInWithOtp({ email });
-      if (magicError) throw magicError;
-      setMessage('Magic link sent. Check your email.');
-    } catch (err) {
-      setError(err.message || 'Unable to send magic link');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     onAuthComplete?.(null);
+  };
+
+  const handleOAuthSignIn = async (provider) => {
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: provider,
+        options: {
+          redirectTo: `${window.location.origin}/`,
+        }
+      });
+      if (error) throw error;
+    } catch (err) {
+      setError(err.message || `${provider} sign-in failed`);
+    }
   };
 
   return (
@@ -85,7 +156,10 @@ function AuthPage({ session, onAuthComplete }) {
       <section className="hero-section">
         <div className="hero-brand">CHAT A.I+</div>
         <div className="hero-content">
-          <h1 className="hero-title">Learn, Discover & Automate in One Place.</h1>
+          <h1 className="hero-title">
+            {streamedTitle}
+            {streamedTitle.length < fullTitle.length && <span className="cursor">|</span>}
+          </h1>
 
           <div className="chat-mock">
             <div className="chat-toolbar">
@@ -95,27 +169,42 @@ function AuthPage({ session, onAuthComplete }) {
               <button aria-label="Info"><i className="fas fa-info-circle"></i></button>
             </div>
 
-            <div className="chat-card">
-              <div className="chat-bubble chat-user">CHAT A.I+</div>
-              <div className="chat-bubble chat-assistant">
-                <p className="chat-question">Create a chatbot GPT using python language what will be step for that</p>
-                <ol>
-                  <li>Install the required libraries (transformers via pip).</li>
-                  <li>Load the pre-trained model (choose a GPT size that fits your needs).</li>
-                  <li>Create a chatbot loop to take user input and stream responses.</li>
-                </ol>
-                <p className="chat-note">These steps get you started; add personality and guardrails as needed.</p>
+            {showChat && (
+              <div className="chat-card">
+                {streamedQuestion && (
+                  <div className="chat-bubble chat-user">
+                    {streamedQuestion}
+                    {streamedQuestion.length < fullQuestion.length && <span className="cursor">|</span>}
+                  </div>
+                )}
+                {streamedAnswer && (
+                  <div className="chat-bubble chat-assistant">
+                    <p className="chat-question">
+                      {streamedAnswer}
+                      {streamedAnswer.length < fullAnswer.length && <span className="cursor">|</span>}
+                    </p>
+                    {streamedNote && (
+                      <p className="chat-note">
+                        {streamedNote}
+                        {streamedNote.length < fullNote.length && <span className="cursor">|</span>}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
             <div className="chat-input-bar">
-              <span className="emoji" role="img" aria-label="smile">😊</span>
-              <input type="text" placeholder="Reply..." readOnly />
+              <span className="emoji" role="img" aria-label="sparkle">✨</span>
+              <input type="text" placeholder="Start exploring..." readOnly />
               <button className="send-btn" aria-label="Send"><i className="fas fa-paper-plane"></i></button>
             </div>
           </div>
         </div>
       </section>
+
+
+
 
       <section className="auth-section">
         <div className="auth-panel-header">
@@ -209,7 +298,7 @@ function AuthPage({ session, onAuthComplete }) {
             </div>
 
             <div className="social-row">
-              <button type="button" className="social-btn" disabled>
+              <button type="button" className="social-btn" onClick={() => handleOAuthSignIn('google')}>
                 <svg className="social-icon" viewBox="0 0 24 24" width="20" height="20">
                   <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
                   <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
@@ -218,7 +307,7 @@ function AuthPage({ session, onAuthComplete }) {
                 </svg>
                 Continue with Google
               </button>
-              <button type="button" className="social-btn" disabled>
+              <button type="button" className="social-btn" onClick={() => handleOAuthSignIn('apple')}>
                 <svg className="social-icon" viewBox="0 0 24 24" width="20" height="20">
                   <path fill="#000" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09l.01-.01zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/>
                 </svg>
@@ -235,5 +324,4 @@ function AuthPage({ session, onAuthComplete }) {
     </div>
   );
 }
-
 export default AuthPage;

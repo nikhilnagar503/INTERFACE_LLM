@@ -19,10 +19,11 @@ function App() {
     groq: '',
   });
   const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo');
-  const [sessionSidebarExpanded, setSessionSidebarExpanded] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [promptFromLibrary, setPromptFromLibrary] = useState(null);
   const [userAvatar, setUserAvatar] = useState(null);
+  const [chatSessions, setChatSessions] = useState([]);
+  const [sessionMessages, setSessionMessages] = useState({});
 
   // Check for selected prompt from library on mount and when currentPage changes
   useEffect(() => {
@@ -47,6 +48,28 @@ function App() {
         loadUserApiKeys(data.session.user.id);
         refreshUserAvatar(data.session.user);
         setCurrentPage('chat');
+      }
+      const storedSessions = localStorage.getItem('chat_sessions');
+      if (storedSessions) {
+        try {
+          const parsed = JSON.parse(storedSessions);
+          if (Array.isArray(parsed)) {
+            setChatSessions(parsed);
+          }
+        } catch (error) {
+          console.error('Failed to parse chat sessions', error);
+        }
+      }
+      const storedMessages = localStorage.getItem('chat_session_messages');
+      if (storedMessages) {
+        try {
+          const parsedMessages = JSON.parse(storedMessages);
+          if (parsedMessages && typeof parsedMessages === 'object') {
+            setSessionMessages(parsedMessages);
+          }
+        } catch (error) {
+          console.error('Failed to parse chat messages', error);
+        }
       }
       setLoading(false);
     };
@@ -73,6 +96,23 @@ function App() {
 
     return () => listener?.subscription?.unsubscribe();
   }, []);
+
+  const updateSessions = (updater) => {
+    setChatSessions((prev) => {
+      const next = updater(prev);
+      localStorage.setItem('chat_sessions', JSON.stringify(next));
+      return next;
+    });
+  };
+
+  const updateSessionMessages = (sessionId, messages) => {
+    if (!sessionId) return;
+    setSessionMessages((prev) => {
+      const next = { ...prev, [sessionId]: messages };
+      localStorage.setItem('chat_session_messages', JSON.stringify(next));
+      return next;
+    });
+  };
 
   const loadUserApiKeys = (userId) => {
     const userKeys = {
@@ -129,13 +169,52 @@ function App() {
   };
 
   const handleNewChat = () => {
-    setCurrentSessionId(null);
-    // Will trigger a new session in ChatInterface
+    const newSession = {
+      id: `session-${Date.now()}`,
+      title: 'New chat',
+      timestamp: new Date().toISOString(),
+    };
+    updateSessions((prev) => {
+      const next = [newSession, ...prev.filter((s) => s.id !== newSession.id)];
+      return next.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    });
+    setCurrentSessionId(newSession.id);
+    updateSessionMessages(newSession.id, []);
+    setCurrentPage('chat');
   };
 
   const handleSelectSession = (session) => {
     setCurrentSessionId(session.id);
     // Optionally load session data here
+  };
+
+  const handleClearSessions = () => {
+    localStorage.removeItem('chat_sessions');
+    localStorage.removeItem('chat_session_messages');
+    setChatSessions([]);
+    setSessionMessages({});
+    setCurrentSessionId(null);
+  };
+
+  const handleSessionUpdate = (sessionId, data) => {
+    if (!sessionId) return;
+    updateSessions((prev) => {
+      const existingIndex = prev.findIndex((s) => s.id === sessionId);
+      const now = data?.timestamp || new Date().toISOString();
+      const title = data?.title || prev[existingIndex]?.title || 'New chat';
+      const updated = {
+        id: sessionId,
+        title,
+        timestamp: now,
+      };
+      const next = [...prev];
+      if (existingIndex >= 0) {
+        next[existingIndex] = { ...prev[existingIndex], ...updated };
+      } else {
+        next.unshift(updated);
+      }
+      return next.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    });
   };
 
   const handleSignOut = async () => {
@@ -170,6 +249,9 @@ function App() {
             apiKeys={apiKeys}
             session={session}
             sessionId={currentSessionId}
+            messages={currentSessionId ? (sessionMessages[currentSessionId] || []) : []}
+            onMessagesChange={(messages) => updateSessionMessages(currentSessionId, messages)}
+            onSessionUpdate={handleSessionUpdate}
             initialPrompt={promptFromLibrary}
             onPromptUsed={() => setPromptFromLibrary(null)}
             onOpenSettings={() => setCurrentPage('settings')}
@@ -199,10 +281,13 @@ function App() {
             apiKeys={apiKeys}
             session={session}
             sessionId={currentSessionId}
+            messages={currentSessionId ? (sessionMessages[currentSessionId] || []) : []}
+            onMessagesChange={(messages) => updateSessionMessages(currentSessionId, messages)}
             initialPrompt={promptFromLibrary}
             onPromptUsed={() => setPromptFromLibrary(null)}
             userAvatar={userAvatar}
             onOpenSettings={() => setCurrentPage('settings')}
+            onSessionUpdate={handleSessionUpdate}
           />
         );
     }
@@ -223,6 +308,8 @@ function App() {
           onNewChat={handleNewChat}
           onSelectSession={handleSelectSession}
           currentSessionId={currentSessionId}
+          sessions={chatSessions}
+          onClearSessions={handleClearSessions}
           onOpenSettings={() => setCurrentPage('settings')}
           onOpenProfile={() => setCurrentPage('profile')}
           session={session}

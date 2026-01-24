@@ -1,38 +1,24 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useMemo } from 'react';
 import './ChatSidebar.css';
 
 function ChatSidebar({
   onNewChat,
   onSelectSession,
   currentSessionId,
+  sessions = [],
+  onClearSessions,
   onOpenSettings,
   onOpenProfile,
   session,
   userAvatar,
 }) {
-  const [sessions, setSessions] = useState([]);
-  const [filteredSessions, setFilteredSessions] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
 
-  // Load sessions from localStorage
-  useEffect(() => {
-    const loadSessions = () => {
-      const savedSessions = localStorage.getItem('chat_sessions');
-      if (savedSessions) {
-        const parsed = JSON.parse(savedSessions);
-        const sorted = parsed.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        setSessions(sorted);
-        setFilteredSessions(sorted);
-      }
-    };
-
-    loadSessions();
-  }, []);
-
-  const handleClearAll = () => {
-    localStorage.removeItem('chat_sessions');
-    setSessions([]);
-    setFilteredSessions([]);
-  };
+  const filteredSessions = useMemo(() => {
+    if (!searchQuery.trim()) return sessions;
+    const query = searchQuery.toLowerCase();
+    return sessions.filter((item) => (item.title || '').toLowerCase().includes(query));
+  }, [sessions, searchQuery]);
 
   // Group sessions by time period
   const groupSessionsByDate = (sessionsList) => {
@@ -70,7 +56,7 @@ function ChatSidebar({
     <aside className="chat-sidebar">
       {/* Logo */}
       <div className="sidebar-logo">
-        <span className="logo-text">CHAT A.I+</span>
+        <span className="logo-text">InterFace</span>
       </div>
 
       {/* New Chat & Search Row */}
@@ -79,23 +65,30 @@ function ChatSidebar({
           <i className="fas fa-plus"></i>
           <span>New chat</span>
         </button>
-        <button className="search-btn" title="Search">
+        <div className="search-input">
           <i className="fas fa-search"></i>
-        </button>
+          <input
+            type="text"
+            placeholder="Search"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
       </div>
 
       {/* Conversations Header */}
       <div className="conversations-header">
         <span className="conversations-label">Your conversations</span>
-        <button className="clear-all-btn" onClick={handleClearAll}>Clear All</button>
+        <button className="clear-all-btn" onClick={() => onClearSessions?.()}>Clear All</button>
       </div>
+
 
       {/* Sessions List */}
       <div className="sessions-list">
         {filteredSessions.length === 0 ? (
           <div className="empty-sessions">
             <i className="fas fa-inbox"></i>
-            <p>No chat history yet</p>
+            <p>{searchQuery ? 'No matching chats' : 'No chat history yet'}</p>
           </div>
         ) : (
           <>

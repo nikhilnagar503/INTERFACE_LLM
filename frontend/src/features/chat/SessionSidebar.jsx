@@ -1,7 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import './SessionSidebar.css';
 
-function SessionSidebar({ isExpanded, onToggle, onNewChat, onSelectSession, currentSessionId }) {
+function SessionSidebar({
+  isExpanded,
+  onToggle,
+  onNewChat,
+  onSelectSession,
+  currentSessionId,
+  onOpenSettings,
+  onOpenProfile,
+}) {
   const [sessions, setSessions] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [filteredSessions, setFilteredSessions] = useState([]);
@@ -68,7 +76,11 @@ function SessionSidebar({ isExpanded, onToggle, onNewChat, onSelectSession, curr
         <div className="session-sidebar-content">
           {/* Header */}
           <div className="session-header">
-            <h3>Chats</h3>
+            <div className="badge-pill">Chat A.I+</div>
+            <div>
+              <p className="eyebrow">Your conversations</p>
+              <h3>Conversations</h3>
+            </div>
           </div>
 
           {/* New Chat Button */}
@@ -112,6 +124,18 @@ function SessionSidebar({ isExpanded, onToggle, onNewChat, onSelectSession, curr
                 </button>
               ))
             )}
+          </div>
+
+          {/* Footer actions */}
+          <div className="session-footer">
+            <button className="footer-btn" onClick={() => onOpenSettings?.()}>
+              <i className="fas fa-cog"></i>
+              <span>Settings</span>
+            </button>
+            <button className="footer-btn" onClick={() => onOpenProfile?.()}>
+              <i className="fas fa-user"></i>
+              <span>Profile</span>
+            </button>
           </div>
         </div>
       )}

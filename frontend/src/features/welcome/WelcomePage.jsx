@@ -1,62 +1,126 @@
 import React from 'react';
 import './WelcomePage.css';
 
-function WelcomePage() {
-  const suggestions = [
+function WelcomePage({ onSuggestionClick, hasApiKeys, onOpenSettings }) {
+  const suggestionCards = [
     {
-      icon: 'fas fa-pen',
-      title: 'Write Copy',
-      description: 'Create engaging content for emails, blogs, and more.',
+      id: 'explore',
+      icon: '🌐',
+      title: 'Explore',
+      description: 'Learn how to use chat.ai platform for your needs',
+      dark: true,
     },
     {
-      icon: 'fas fa-images',
-      title: 'Image Generation',
-      description: 'Generate images using AI powered image generation.',
+      id: 'explain',
+      icon: '💭',
+      title: '"Explain"',
+      description: 'Quantum computing in simple terms"',
+      hasArrow: true,
     },
     {
-      icon: 'fas fa-magnifying-glass',
-      title: 'Research',
-      description: 'Quickly gather and summarize information.',
+      id: 'howto',
+      icon: '🔧',
+      title: '"How to"',
+      description: 'Make a search engine platform like google',
+      hasArrow: true,
     },
     {
-      icon: 'fas fa-code',
-      title: 'Generate Code',
-      description: 'Produce accurate code lists and documentation.',
+      id: 'capabilities',
+      icon: '⚡',
+      title: 'Capabilities',
+      description: 'How much capable chat.ai to full-fill your needs',
+      dark: true,
     },
     {
-      icon: 'fas fa-chart-line',
-      title: 'Data Analytics',
-      description: 'Analyze data with advanced insights.',
+      id: 'remember',
+      icon: '🧠',
+      title: '"Remember"',
+      description: 'quantum computing in simple terms"',
+      hasArrow: true,
     },
     {
-      icon: 'fas fa-globe',
-      title: 'Web Search',
-      description: 'Find information online with text-based search capabilities.',
+      id: 'allows',
+      icon: '✅',
+      title: '"Allows"',
+      description: 'User to provide follow-up corrections',
+      hasArrow: true,
+    },
+    {
+      id: 'limitation',
+      icon: '⚠️',
+      title: 'Limitation',
+      description: 'How much capable chat.ai to full-fill your needs',
+      dark: true,
+    },
+    {
+      id: 'may',
+      icon: '❌',
+      title: '"May"',
+      description: 'Occasionally generate incorrect information',
+      hasArrow: true,
+    },
+    {
+      id: 'limited',
+      icon: '📅',
+      title: '"Limited"',
+      description: 'Knowledge of world and events after 2021',
+      hasArrow: true,
     },
   ];
 
+  const handleCardClick = (card) => {
+    if (onSuggestionClick) {
+      onSuggestionClick(card.title.replace(/"/g, '') + ' ' + card.description);
+    }
+  };
+
   return (
     <div className="welcome-page">
-      <div className="welcome-header">
-        <div className="logo-large">
-          <i className="fas fa-cube"></i>
-        </div>
-        <h1>Welcome to Interface</h1>
-        <p>Chat with AI. Break down lengthy texts into concise summaries to grasp.</p>
-      </div>
-
-      {/* <div className="suggestions-grid">
-        {suggestions.map((suggestion, index) => (
-          <div key={index} className="suggestion-card">
-            <div className="suggestion-icon">
-              <i className={suggestion.icon}></i>
+      <div className="welcome-content">
+        {/* API Key Banner */}
+        {!hasApiKeys && (
+          <div className="api-key-banner">
+            <div className="banner-icon">🔑</div>
+            <div className="banner-content">
+              <h3>Configure API Keys to Get Started</h3>
+              <p>Add at least one API key to start chatting with AI models.</p>
             </div>
-            <h3>{suggestion.title}</h3>
-            <p>{suggestion.description}</p>
+            <button className="banner-btn" onClick={onOpenSettings}>
+              Configure API Keys
+            </button>
           </div>
-        ))}
-      </div> */}
-      
+        )}
+
+        {/* Badge */}
+        <div className="welcome-badge">
+          <span>CHAT A.I+</span>
+        </div>
+
+        {/* Headline */}
+        <h1 className="welcome-headline">Good day! How may I assist you today?</h1>
+
+        {/* Suggestion Cards Grid */}
+        <div className="suggestions-grid">
+          {suggestionCards.map((card) => (
+            <button
+              key={card.id}
+              className={`suggestion-card ${card.dark ? 'dark' : 'light'}`}
+              onClick={() => handleCardClick(card)}
+            >
+              <div className="card-icon">{card.icon}</div>
+              <div className="card-content">
+                <h3 className="card-title">{card.title}</h3>
+                <p className="card-description">{card.description}</p>
+              </div>
+              {card.hasArrow && (
+                <div className="card-arrow">
+                  <i className="fas fa-arrow-right"></i>
+                </div>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
     </div>
   );
 }

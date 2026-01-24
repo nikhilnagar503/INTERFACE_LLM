@@ -61,7 +61,7 @@ const BUILT_IN_PROMPTS = [
   }
 ];
 
-function PromptLibrary({ onUsePrompt }) {
+function PromptLibrary({ onUsePrompt, onPromptSelected, isModal = false, isOpen = true, onClose }) {
   const [prompts, setPrompts] = useState(() => {
     // Load from localStorage if available, otherwise start empty
     const saved = localStorage.getItem('userPrompts');
@@ -81,6 +81,10 @@ function PromptLibrary({ onUsePrompt }) {
     content: '',
     tags: []
   });
+
+  if (isModal && !isOpen) {
+    return null;
+  }
 
   // Get all unique tags
   const allTags = [...new Set(prompts.flatMap(p => p.tags))];
@@ -128,8 +132,9 @@ function PromptLibrary({ onUsePrompt }) {
     if (!selectedPrompt) return;
     // Store in localStorage for chat component to use
     localStorage.setItem('selectedPrompt', JSON.stringify(selectedPrompt));
-    // Navigate to chat using the callback
-    if (onUsePrompt) {
+    if (onPromptSelected) {
+      onPromptSelected(selectedPrompt);
+    } else if (onUsePrompt) {
       onUsePrompt();
     } else {
       // Fallback to window.location.href if callback not provided
@@ -160,8 +165,18 @@ function PromptLibrary({ onUsePrompt }) {
     }
   };
 
-  return (
-    <div className="prompt-library">
+  const libraryBody = (
+    <div className={`prompt-library ${isModal ? 'prompt-library-modal' : ''}`}>
+      {isModal && (
+        <div className="prompt-library-modal-header">
+          <div>
+            <span className="modal-label">PROMPT HUB</span>
+            <h2>Your Prompt Library</h2>
+            <p>Create, browse, favorite, and send prompts straight into chat.</p>
+          </div>
+          <button className="btn-close" onClick={onClose}>✕</button>
+        </div>
+      )}
       {showNotification && (
         <div className="notification">
           ✓ Added to your prompt library
@@ -389,8 +404,21 @@ function PromptLibrary({ onUsePrompt }) {
         onClose={() => setShowMarketplace(false)}
         onSelectPrompt={handleMarketplaceSelect}
         selectedPrompts={[]}
-      />    </div>
+      />
+    </div>
   );
+
+  if (isModal) {
+    return (
+      <div className="prompt-library-overlay">
+        <div className="prompt-library-modal-wrapper">
+          {libraryBody}
+        </div>
+      </div>
+    );
+  }
+
+  return libraryBody;
 }
 
 export default PromptLibrary;

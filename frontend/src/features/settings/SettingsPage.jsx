@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import './SettingsPage.css';
 
-function SettingsPage({ apiKeys, onSaveApiKeys }) {
+function SettingsPage({ apiKeys, onSaveApiKeys, onClose }) {
   const [keys, setKeys] = useState(apiKeys);
   const [isNewUser, setIsNewUser] = useState(false);
   const [showPasswords, setShowPasswords] = useState({
@@ -48,6 +48,11 @@ function SettingsPage({ apiKeys, onSaveApiKeys }) {
   return (
     <div className="settings-page">
       <div className="settings-container">
+        {onClose && (
+          <button className="page-close-btn" onClick={onClose} title="Back to Chat">
+            <i className="fas fa-times"></i>
+          </button>
+        )}
         {isNewUser && (
           <div className="welcome-banner">
             <div className="welcome-icon">👋</div>
@@ -58,6 +63,11 @@ function SettingsPage({ apiKeys, onSaveApiKeys }) {
           </div>
         )}
         <div className="settings-header">
+          {onClose && (
+            <button className="back-to-chat-btn" onClick={onClose}>
+              <i className="fas fa-arrow-left"></i> Back to Chat
+            </button>
+          )}
           <h1>Settings</h1>
           <p>Manage your API keys and preferences</p>
         </div>

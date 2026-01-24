@@ -1,19 +1,20 @@
-import React, { useState, useEffect, useRef } from 'react';
-import ReactMarkdown from 'react-markdown';
-import WelcomePage from '../welcome/WelcomePage';
-import PromptMarketplace from '../prompts/PromptMarketplace';
-import { API_URL } from '../../lib/api';
-import models from './models';
-import './ChatInterface.css';
-
-function ChatInterface({
-  selectedModel,
+            <button
+              type="button"
+              className="model-select-btn"
+              onClick={() => setShowModelModal(!showModelModal)}
+            >
+              <span className="model-name">{selectedModel}</span>
+              <i className="fas fa-chevron-down"></i>
+            </button>
+            <button
   setSelectedModel,
   apiKeys,
   session,
   sessionId: propSessionId,
   initialPrompt,
   onPromptUsed,
+  onOpenSettings,
+  userAvatar,
 }) {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState('');
@@ -22,8 +23,8 @@ function ChatInterface({
   const [showModelModal, setShowModelModal] = useState(false);
   const [searchModel, setSearchModel] = useState('');
   const [currentProvider, setCurrentProvider] = useState('');
-  const [showPromptMarketplace, setShowPromptMarketplace] = useState(false);
-  const [selectedPrompts, setSelectedPrompts] = useState([]);
+  const [showPromptLibrary, setShowPromptLibrary] = useState(false);
+  const [copiedMessageId, setCopiedMessageId] = useState(null);
   const messagesEndRef = useRef(null);
 
   useEffect(() => {
@@ -39,26 +40,26 @@ function ChatInterface({
     }
   }, [initialPrompt, onPromptUsed]);
 
-  // Get provider logo SVG path
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages]);
+
   const renderProviderLogo = (provider) => {
     const logos = {
       openai: '/logos/openai.svg',
       anthropic: '/logos/anthropic.svg',
       gemini: '/logos/gemini.svg',
-      groq: '/logos/groq.svg'
+      groq: '/logos/groq.svg',
     };
     return logos[provider || currentProvider] || '/logos/openai.svg';
   };
 
-  // Add contextual emojis to response
   const enhanceWithEmojis = (text) => {
+    if (!text) return text;
     let enhanced = text;
-    
-    // Add emojis contextually based on content
     enhanced = enhanced.replace(/(^|\n)(#{1,3})\s*([^\n]+)/g, (match, prefix, hashes, title) => {
       let emoji = '';
       const lowerTitle = title.toLowerCase();
-      
       if (lowerTitle.includes('example') || lowerTitle.includes('demo')) emoji = '💡 ';
       else if (lowerTitle.includes('note') || lowerTitle.includes('important')) emoji = '📌 ';
       else if (lowerTitle.includes('warning') || lowerTitle.includes('caution')) emoji = '⚠️ ';
@@ -69,45 +70,81 @@ function ChatInterface({
       else if (lowerTitle.includes('error') || lowerTitle.includes('issue')) emoji = '❌ ';
       else if (lowerTitle.includes('success') || lowerTitle.includes('complete')) emoji = '✨ ';
       else if (lowerTitle.includes('question') || lowerTitle.includes('help')) emoji = '❓ ';
-      
       return `${prefix}${hashes} ${emoji}${title}`;
     });
-    
     return enhanced;
   };
 
-
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const formatTime = (timestamp) => {
+    if (!timestamp) return 'Just now';
+    try {
+      return new Date(timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    } catch (_error) {
+      return 'Just now';
+    }
   };
 
-  useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  /**
-   * Handle prompt selection from the marketplace
-   * Adds the selected prompt template to the input
-   */
-  const handleSelectPromptTemplate = (template) => {
-    // Add the prompt to the input field for the user to execute
-    setInput(template.content);
-    setSelectedPrompts((prev) => 
-      prev.includes(template.id) 
-        ? prev.filter(id => id !== template.id)
-        : [...prev, template.id]
-    );
-    // Keep marketplace open for multiple selections
+  const handleCopyMessage = (content, index) => {
+    if (!content) return;
+    try {
+      navigator.clipboard.writeText(content);
+      setCopiedMessageId(index);
+      setTimeout(() => setCopiedMessageId(null), 2000);
+    } catch (error) {
+      console.error('Clipboard error:', error);
+    }
   };
 
-  /**
-   * Close marketplace and clear selected prompts
-   */
-  const handleCloseMarketplace = () => {
-    setShowPromptMarketplace(false);
-    setSelectedPrompts([]);
+  const handlePromptSelected = (prompt) => {
+    if (!prompt?.content) return;
+    setInput(prompt.content);
+    onPromptUsed?.();
+    setShowPromptLibrary(false);
   };
+
+  const handlePluginsClick = () => {
+    console.log('Plugins coming soon');
+  };
+
+  const handleAgentsClick = () => {
+    console.log('Agents coming soon');
+  };
+
+  const renderFloatingControls = () => (
+    <div className="floating-controls">
+      <button
+        type="button"
+        className="floating-control-btn plugin-btn"
+        onClick={handlePluginsClick}
+        title="Open plugins"
+      >
+        <span className="fab-icon">
+          <i className="fas fa-plug"></i>
+        </span>
+        <span className="fab-label">Plugins</span>
+      </button>
+      <button
+        type="button"
+        className="floating-control-btn agent-btn"
+        onClick={handleAgentsClick}
+        title="Open agents"
+      >
+        <span className="fab-icon">
+          <i className="fas fa-robot"></i>
+        </span>
+        <span className="fab-label">Agents</span>
+      </button>
+      <button
+        type="button"
+        className="floating-control-btn prompt-fab"
+        onClick={() => setShowPromptLibrary(true)}
+        title="Browse prompt library"
+      >
+        <span className="fab-icon">✦</span>
+        <span className="fab-label">Prompts</span>
+      </button>
+    </div>
+  );
 
   const handleSend = async (e) => {
     e.preventDefault();
@@ -119,6 +156,7 @@ function ChatInterface({
         {
           role: 'error',
           content: 'Please sign in on the Account tab before chatting.',
+          timestamp: new Date().toISOString(),
         },
       ]);
       return;
@@ -126,66 +164,70 @@ function ChatInterface({
 
     const userMessage = input.trim();
     setInput('');
-
-    // Add user message to chat
-    setMessages((prev) => [...prev, { role: 'user', content: userMessage }]);
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: 'user',
+        content: userMessage,
+        timestamp: new Date().toISOString(),
+      },
+    ]);
     setLoading(true);
 
     try {
-      // Determine provider from model name
       let provider = 'openai';
-      if (selectedModel.includes('claude')) provider = 'anthropic';
-      if (selectedModel.includes('gemini')) provider = 'gemini';
-      if (selectedModel.includes('mixtral') || selectedModel.includes('llama')) provider = 'groq';
-      
+      if (selectedModel.toLowerCase().includes('claude')) provider = 'anthropic';
+      if (selectedModel.toLowerCase().includes('gemini')) provider = 'gemini';
+      if (selectedModel.toLowerCase().includes('mixtral') || selectedModel.toLowerCase().includes('llama')) {
+        provider = 'groq';
+      }
       setCurrentProvider(provider);
 
-      const authHeader = session?.access_token
-        ? { Authorization: `Bearer ${session.access_token}` }
-        : {};
-
-      // Get API key from storage using user ID
+      const authHeader = session?.access_token ? { Authorization: `Bearer ${session.access_token}` } : {};
       const userId = session?.user?.id;
       const apiKeyKey = `api_key_${provider}_${userId}`;
       const apiKey = localStorage.getItem(apiKeyKey);
-
       if (!apiKey) {
         throw new Error(`No API key found for ${provider}. Please configure it in Settings.`);
       }
 
-      // First, configure the backend if not already done
-      const cleanHistory = messages.filter((m) => m.role === 'user' || m.role === 'assistant');
+      const cleanHistory = messages.filter((msg) => msg.role === 'user' || msg.role === 'assistant');
 
-      const configureResponse = await fetch(`${API_URL}/api/configure`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...authHeader,
-        },
-        body: JSON.stringify({
-          provider: provider,
-          api_key: apiKey,
-          model: selectedModel,
-          session_id: sessionId,
-        }),
-      });
+      let configureResponse;
+      try {
+        configureResponse = await fetch(`${API_URL}/api/configure`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            ...authHeader,
+          },
+          body: JSON.stringify({
+            provider,
+            api_key: apiKey,
+            model: selectedModel,
+            session_id: sessionId,
+          }),
+        });
+      } catch (networkError) {
+        console.error('Configure fetch error:', networkError);
+        throw new Error(`Network error: ${networkError.message}. Is the backend running at ${API_URL}?`);
+      }
 
       if (!configureResponse.ok) {
         const configError = await configureResponse.json();
         throw new Error(configError.detail || 'Failed to configure LLM');
       }
 
-      // Add empty assistant message that we'll stream into
       setMessages((prev) => [
         ...prev,
         {
           role: 'assistant',
           content: '',
-          provider: provider,
+          provider,
+          timestamp: new Date().toISOString(),
         },
       ]);
 
-      // Now send the chat message with conversation history using streaming
       const response = await fetch(`${API_URL}/api/chat/stream`, {
         method: 'POST',
         headers: {
@@ -195,7 +237,7 @@ function ChatInterface({
         body: JSON.stringify({
           message: userMessage,
           session_id: sessionId,
-          history: cleanHistory, // Send filtered conversation history for context
+          history: cleanHistory,
         }),
       });
 
@@ -203,7 +245,6 @@ function ChatInterface({
         throw new Error('Failed to get streaming response');
       }
 
-      // Read the streaming response
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let streamedContent = '';
@@ -214,20 +255,15 @@ function ChatInterface({
 
         const chunk = decoder.decode(value);
         const lines = chunk.split('\n');
-
         for (const line of lines) {
           if (!line) continue;
-
           try {
             const data = JSON.parse(line);
-
             if (data.error) {
               throw new Error(data.error);
             }
-
             if (data.chunk) {
               streamedContent += data.chunk;
-              // Update the last assistant message with streamed content
               setMessages((prev) => {
                 const updated = [...prev];
                 if (updated[updated.length - 1]?.role === 'assistant') {
@@ -237,23 +273,22 @@ function ChatInterface({
                 return updated;
               });
             }
-
             if (data.done) {
-              // Streaming complete
               break;
             }
-          } catch (e) {
-            // Skip parsing errors for incomplete lines
+          } catch (_err) {
             continue;
           }
         }
       }
     } catch (err) {
+      console.error('Chat error:', err);
       setMessages((prev) => [
         ...prev,
         {
           role: 'error',
-          content: `Error: ${err.message}`,
+          content: `Error: ${err.message}. Please check that the backend is running and you have configured your API key in Settings.`,
+          timestamp: new Date().toISOString(),
         },
       ]);
     } finally {
@@ -261,172 +296,33 @@ function ChatInterface({
     }
   };
 
-  // Show welcome page if no messages
-  if (messages.length === 0) {
-    const allModels = Object.entries(models).flatMap(([provider, modelList]) =>
-      modelList.map((model) => ({ provider, name: model }))
-    );
-    const filteredModels = allModels.filter((m) =>
-      m.name.toLowerCase().includes(searchModel.toLowerCase())
-    );
+  const userName = session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'You';
+  const userInitials = userName
+    .split(' ')
+    .map((part) => part.charAt(0))
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
 
-    return (
-      <div className="chat-interface">
-        {showModelModal && (
-          <div className="model-modal-overlay" onClick={() => setShowModelModal(false)}>
-            <div className="model-modal" onClick={(e) => e.stopPropagation()}>
-              <div className="model-modal-header">
-                <span className="model-modal-title">
-                  <i className="fas fa-brain"></i> {selectedModel}
-                </span>
-                <span className="model-count">400K</span>
-              </div>
-              <div className="model-search">
-                <i className="fas fa-search"></i>
-                <input
-                  type="text"
-                  placeholder="Search models..."
-                  value={searchModel}
-                  onChange={(e) => setSearchModel(e.target.value)}
-                  className="model-search-input"
-                />
-              </div>
-              <div className="model-list">
-                {filteredModels.length > 0 ? (
-                  filteredModels.map((model) => (
-                    <button
-                      key={model.name}
-                      className={`model-item ${
-                        selectedModel === model.name ? 'active' : ''
-                      }`}
-                      onClick={() => {
-                        setSelectedModel(model.name);
-                        setShowModelModal(false);
-                        setSearchModel('');
-                      }}
-                    >
-                      <span className="model-item-left">
-                        <i className="fas fa-brain"></i>
-                        <span>{model.name}</span>
-                      </span>
-                      <span className="model-item-right">
-                        <span className="model-cost">400K</span>
-                        <button className="model-add-btn">
-                          <i className="fas fa-plus"></i>
-                        </button>
-                      </span>
-                    </button>
-                  ))
-                ) : (
-                  <div className="model-empty">No models found</div>
-                )}
-              </div>
-              <button className="model-manage-btn">
-                <i className="fas fa-cog"></i> Manage Models
-              </button>
-            </div>
-          </div>
-        )}
+  const latestUserMessage = [...messages].reverse().find((msg) => msg.role === 'user');
+  const conversationHeadingRaw = latestUserMessage?.content?.split('\n')[0] || 'Create a chatbot GPT using Python language';
+  const conversationHeading = conversationHeadingRaw.length > 80 ? `${conversationHeadingRaw.slice(0, 77)}...` : conversationHeadingRaw;
+  const conversationSubtitle = messages.length > 0
+    ? `Using ${selectedModel} · ${messages.length} message${messages.length === 1 ? '' : 's'}`
+    : 'Ask anything — get curated steps, guides, and answers instantly.';
+  const hasMessages = messages.length > 0;
 
-        <div className="chat-content">
-          <WelcomePage />
-        </div>
-
-        <div className="chat-input-section">
-          <div className="input-actions-row">
-            <button
-              type="button"
-              className="model-select-btn"
-              onClick={() => setShowModelModal(!showModelModal)}
-            >
-              <span className="model-name">{selectedModel}</span>
-              <i className="fas fa-chevron-down"></i>
-            </button>
-            <button
-              type="button"
-              className="action-btn"
-              title="Browse Templates"
-              onClick={() => setShowPromptMarketplace(true)}
-            >
-              <i className="fas fa-plus"></i>
-            </button>
-            <button
-              type="button"
-              className="action-btn"
-              title="Attach file"
-              onClick={() => {}}
-            >
-              <i className="fas fa-paperclip"></i>
-            </button>
-            <button
-              type="button"
-              className="action-btn"
-              title="Voice input"
-              onClick={() => {}}
-            >
-              <i className="fas fa-microphone"></i>
-            </button>
-            <button
-              type="button"
-              className="action-btn action-btn-highlight"
-              title="Create"
-              onClick={() => {}}
-            >
-              <i className="fas fa-square"></i>
-            </button>
-            <button
-              type="button"
-              className="action-btn"
-              title="Ideas"
-              onClick={() => {}}
-            >
-              <i className="fas fa-lightbulb"></i>
-            </button>
-            <button
-              type="button"
-              className="action-btn"
-              title="Timer"
-              onClick={() => {}}
-            >
-              <i className="fas fa-hourglass-end"></i>
-            </button>
-          </div>
-          <form onSubmit={handleSend} className="chat-input-form">
-            <div className="chat-input-wrapper">
-              <div className="input-row">
-                <input
-                  type="text"
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  placeholder="Type '@' to mention an AI agent"
-                  className="chat-input"
-                  disabled={loading}
-                />
-                <button
-                  type="submit"
-                  className="btn-send"
-                  disabled={loading || !input.trim()}
-                >
-                  <i className="fas fa-paper-plane"></i>
-                </button>
-              </div>
-            </div>
-          </form>
-        </div>
-      </div>
-    );
-  }
-
-  // Show chat interface if there are messages
-  const allModels = Object.entries(models).flatMap(([provider, modelList]) =>
-    modelList.map((model) => ({ provider, name: model }))
+  const allModels = Object.entries(models).flatMap(([provider, list]) =>
+    list.map((model) => ({ provider, name: model }))
   );
-  const filteredModels = allModels.filter((m) =>
-    m.name.toLowerCase().includes(searchModel.toLowerCase())
+  const filteredModels = allModels.filter((model) =>
+    model.name.toLowerCase().includes(searchModel.toLowerCase())
   );
 
   return (
     <div className="chat-interface">
+      {renderFloatingControls()}
+
       {showModelModal && (
         <div className="model-modal-overlay" onClick={() => setShowModelModal(false)}>
           <div className="model-modal" onClick={(e) => e.stopPropagation()}>
@@ -451,9 +347,7 @@ function ChatInterface({
                 filteredModels.map((model) => (
                   <button
                     key={model.name}
-                    className={`model-item ${
-                      selectedModel === model.name ? 'active' : ''
-                    }`}
+                    className={`model-item ${selectedModel === model.name ? 'active' : ''}`}
                     onClick={() => {
                       setSelectedModel(model.name);
                       setShowModelModal(false);
@@ -483,137 +377,103 @@ function ChatInterface({
         </div>
       )}
 
-      <div className="chat-messages">
-        {messages.map((msg, index) => (
-          <div key={index} className={`message message-${msg.role}`}>
-            <div className="message-avatar">
-              {msg.role === 'user' ? (
-                '👤'
-              ) : msg.role === 'error' ? (
-                '⚠️'
-              ) : (
-                <img src={renderProviderLogo(msg.provider)} alt="AI Provider" className="provider-logo" />
-              )}
-            </div>
-            <div className="message-content">
-              <div className="message-text">
-                {msg.role === 'user' || msg.role === 'error' ? (
-                  msg.content
-                ) : (
-                  <ReactMarkdown>{msg.content}</ReactMarkdown>
-                )}
-              </div>
-            </div>
+      <div className="chat-shell">
+        <header className="chat-header">
+          <div className="chat-header-info">
+            <span className="chat-header-badge">CHAT A.I +</span>
+            <h1>{conversationHeading}</h1>
+            <p>{conversationSubtitle}</p>
           </div>
-        ))}
-        {loading && (
-          <div className="message message-assistant">
-            <div className="message-avatar">
-              <img src={renderProviderLogo(currentProvider)} alt="AI Provider" className="provider-logo" />
+          <div className="chat-header-user">
+            <div className="header-avatar">
+              {userAvatar ? <img src={userAvatar} alt={userName} /> : <span>{userInitials}</span>}
             </div>
-            <div className="message-content">
-              <div className="message-text typing">
-                <span></span>
-                <span></span>
-                <span></span>
+            <div className="header-user-copy">
+              <span className="user-name">{userName}</span>
+              <span className="user-status">Ready to collaborate</span>
+            </div>
+            <button type="button" className="header-settings-btn" onClick={() => onOpenSettings?.()}>
+              Settings
+            </button>
+          </div>
+        </header>
+
+        {hasMessages ? (
+          <div className="chat-messages">
+            {messages.map((msg, index) => {
+              const isUser = msg.role === 'user';
+              const isAssistant = msg.role === 'assistant';
+              const isError = msg.role === 'error';
+              const authorLabel = isUser ? userName : isError ? 'System' : 'CHAT A.I +';
+              const key = msg.timestamp ? `${msg.timestamp}-${index}` : `message-${index}`;
+              return (
+                <div key={key} className={`message message-${msg.role}`}>
+                  <div className="message-avatar">
+                    {isUser ? (
+                      userAvatar ? (
+                        <img src={userAvatar} alt={userName} />
+                      ) : (
+                        <span className="avatar-fallback">{userInitials}</span>
+                      )
+                    ) : isError ? (
+                      <span className="avatar-fallback warning">!</span>
+                    ) : (
+                      <img src={renderProviderLogo(msg.provider)} alt="AI Provider" className="provider-logo" />
+                    )}
+                  </div>
+                  <div className="message-bubble">
+                    <div className="message-meta">
+                      <span className="message-author">{authorLabel}</span>
+                      <span className="message-time">{formatTime(msg.timestamp)}</span>
+                    </div>
+                    <div className="message-text">
+                      {isAssistant ? <ReactMarkdown>{msg.content}</ReactMarkdown> : msg.content}
+                    </div>
+                    {isAssistant && msg.content && (
+                      <div className="message-actions">
+                        <button
+                          type="button"
+                          className={copiedMessageId === index ? 'copied' : ''}
+                          onClick={() => handleCopyMessage(msg.content, index)}
+                        >
+                          <i className="fas fa-copy"></i> {copiedMessageId === index ? 'Copied' : 'Copy'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            {loading && (
+              <div className="message message-assistant typing-message">
+                <div className="message-avatar">
+                  <img src={renderProviderLogo(currentProvider)} alt="AI Provider" className="provider-logo" />
+                </div>
+                <div className="message-bubble">
+                  <div className="message-meta">
+                    <span className="message-author">CHAT A.I +</span>
+                    <span className="message-time">Typing…</span>
+                  </div>
+                  <div className="message-text typing">
+                    <span></span>
+                    <span></span>
+                    <span></span>
+                  </div>
+                </div>
               </div>
-            </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+        ) : (
+          <div className="chat-empty-state">
+            <WelcomePage
+              onSuggestionClick={(text) => setInput(text)}
+              hasApiKeys={Object.values(apiKeys).some((key) => key !== '')}
+              onOpenSettings={onOpenSettings}
+            />
           </div>
         )}
-        <div ref={messagesEndRef} />
-      </div>
 
-      <div className="chat-input-section">
-        <div className="input-actions-row">
-          <button
-            type="button"
-            className="model-select-btn"
-            onClick={() => setShowModelModal(!showModelModal)}
-          >
-            <span className="model-name">{selectedModel}</span>
-            <i className="fas fa-chevron-down"></i>
-          </button>
-          <button
-            type="button"
-            className="action-btn"
-            title="Add"
-            onClick={() => {}}
-          >
-            <i className="fas fa-plus"></i>
-          </button>
-          <button
-            type="button"
-            className="action-btn"
-            title="Attach file"
-            onClick={() => {}}
-          >
-            <i className="fas fa-paperclip"></i>
-          </button>
-          <button
-            type="button"
-            className="action-btn"
-            title="Voice input"
-            onClick={() => {}}
-          >
-            <i className="fas fa-microphone"></i>
-          </button>
-          <button
-            type="button"
-            className="action-btn action-btn-highlight"
-            title="Create"
-            onClick={() => {}}
-          >
-            <i className="fas fa-square"></i>
-          </button>
-          <button
-            type="button"
-            className="action-btn"
-            title="Ideas"
-            onClick={() => {}}
-          >
-            <i className="fas fa-lightbulb"></i>
-          </button>
-          <button
-            type="button"
-            className="action-btn"
-            title="Timer"
-            onClick={() => {}}
-          >
-            <i className="fas fa-hourglass-end"></i>
-          </button>
-        </div>
-        <form onSubmit={handleSend} className="chat-input-form">
-          <div className="chat-input-wrapper">
-            <div className="input-row">
-              <input
-                type="text"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                placeholder="Type '@' to mention an AI agent"
-                className="chat-input"
-                disabled={loading}
-              />
-              <button
-                type="submit"
-                className="btn-send"
-                disabled={loading || !input.trim()}
-              >
-                <i className="fas fa-paper-plane"></i>
-              </button>
-            </div>
-          </div>
-        </form>
-      </div>
-
-      {/* Prompt Marketplace Modal */}
-      <PromptMarketplace
-        isOpen={showPromptMarketplace}
-        onClose={handleCloseMarketplace}
-        onSelectPrompt={handleSelectPromptTemplate}
-        selectedPrompts={selectedPrompts}
-      />
-    </div>
-  );
-}
-
-export default ChatInterface;
+        <div className="chat-input-section">
+          <div className="input-actions-row">
+            <button

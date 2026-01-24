@@ -67,7 +67,7 @@ function ChatSidebar({
     <aside className="chat-sidebar">
       {/* Logo */}
       <div className="sidebar-logo">
-        <span className="logo-text">CHAT A.I+</span>
+        <span className="logo-text">InterFace</span>
       </div>
 
       {/* New Chat & Search Row */}
@@ -86,6 +86,7 @@ function ChatSidebar({
         <span className="conversations-label">Your conversations</span>
         <button className="clear-all-btn" onClick={handleClearAll}>Clear All</button>
       </div>
+
 
       {/* Sessions List */}
       <div className="sessions-list">

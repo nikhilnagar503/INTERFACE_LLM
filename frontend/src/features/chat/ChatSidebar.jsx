@@ -10,7 +10,6 @@ function ChatSidebar({
   session,
   userAvatar,
 }) {
-  const [sessions, setSessions] = useState([]);
   const [filteredSessions, setFilteredSessions] = useState([]);
 
   // Load sessions from localStorage
@@ -20,7 +19,6 @@ function ChatSidebar({
       if (savedSessions) {
         const parsed = JSON.parse(savedSessions);
         const sorted = parsed.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        setSessions(sorted);
         setFilteredSessions(sorted);
       }
     };
@@ -30,7 +28,6 @@ function ChatSidebar({
 
   const handleClearAll = () => {
     localStorage.removeItem('chat_sessions');
-    setSessions([]);
     setFilteredSessions([]);
   };
 

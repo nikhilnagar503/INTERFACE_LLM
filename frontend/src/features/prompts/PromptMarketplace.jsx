@@ -20,8 +20,6 @@ function PromptMarketplace({ isOpen, onClose, onSelectPrompt, selectedPrompts = 
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
   const [error, setError] = useState(null);
-  const [isCached, setIsCached] = useState(true);
-  const [showAddForm, setShowAddForm] = useState(false);
   const [newPromptForm, setNewPromptForm] = useState({
     title: '',
     description: '',
@@ -34,34 +32,25 @@ function PromptMarketplace({ isOpen, onClose, onSelectPrompt, selectedPrompts = 
 
   // Load templates on first open (lazy load + cache)
   useEffect(() => {
-    console.log('PromptMarketplace useEffect:', { isOpen, isCached, templatesLength: templates.length });
-    if (isOpen && !isCached && templates.length === 0) {
-      console.log('Loading templates...');
+    if (isOpen && templates.length === 0) {
       loadTemplates();
     }
-  }, [isOpen, isCached]);
+  }, [isOpen]);
 
   // Load templates from cache or API
   const loadTemplates = async () => {
-    console.log('loadTemplates called');
     setIsLoading(true);
     setError(null);
     try {
       // Check if cached in localStorage
       const cachedTemplates = localStorage.getItem('promptTemplates');
-      console.log('Cached templates:', cachedTemplates ? 'Found' : 'Not found');
       if (cachedTemplates) {
         const parsed = JSON.parse(cachedTemplates);
-        console.log('Parsed cached templates:', parsed.length);
         setTemplates(parsed);
-        setIsCached(true);
       } else {
         // Fetch from API (or use built-in)
-        console.log('Fetching templates...');
         const data = await fetchPromptTemplates();
-        console.log('Fetched templates:', data.length);
         setTemplates(data);
-        setIsCached(true);
         // Cache for future use
         localStorage.setItem('promptTemplates', JSON.stringify(data));
       }
@@ -113,7 +102,6 @@ function PromptMarketplace({ isOpen, onClose, onSelectPrompt, selectedPrompts = 
     
     // Reset form
     setNewPromptForm({ title: '', description: '', content: '', tags: '' });
-    setShowAddForm(false);
   };
 
   // Clear all filters

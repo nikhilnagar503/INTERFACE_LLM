@@ -19,7 +19,6 @@ function App() {
     groq: '',
   });
   const [selectedModel, setSelectedModel] = useState('gpt-3.5-turbo');
-  const [sessionSidebarExpanded, setSessionSidebarExpanded] = useState(false);
   const [currentSessionId, setCurrentSessionId] = useState(null);
   const [promptFromLibrary, setPromptFromLibrary] = useState(null);
   const [userAvatar, setUserAvatar] = useState(null);

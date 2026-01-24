@@ -10,11 +10,83 @@ function AuthPage({ session, onAuthComplete }) {
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  
+  // Streaming text states
+  const [streamedTitle, setStreamedTitle] = useState('');
+  const [streamedQuestion, setStreamedQuestion] = useState('');
+  const [streamedAnswer, setStreamedAnswer] = useState('');
+  const [streamedNote, setStreamedNote] = useState('');
+  const [showChat, setShowChat] = useState(false);
+
+  const fullTitle = "Connect Your APIs. Build Intelligent Agents. Experience the Magic.";
+  const fullQuestion = "How can I leverage AI agents with multiple models?";
+  const fullAnswer = "Seamlessly orchestrate intelligent agents across OpenAI, Anthropic, Gemini, and Groq. Integrate MCP tools, plugins, and custom workflows to automate complex tasks with a unified interface.";
+  const fullNote = "Powered by advanced LLM capabilities and intelligent automation.";
 
   useEffect(() => {
     setError('');
     setMessage('');
   }, [mode]);
+
+  // Streaming effect for hero section
+  useEffect(() => {
+    let titleIndex = 0;
+    let questionIndex = 0;
+    let answerIndex = 0;
+    let noteIndex = 0;
+
+    // Stream title
+    const titleInterval = setInterval(() => {
+      if (titleIndex < fullTitle.length) {
+        setStreamedTitle(fullTitle.slice(0, titleIndex + 1));
+        titleIndex++;
+      } else {
+        clearInterval(titleInterval);
+        // Start chat after title completes
+        setTimeout(() => {
+          setShowChat(true);
+          
+          // Stream question
+          const questionInterval = setInterval(() => {
+            if (questionIndex < fullQuestion.length) {
+              setStreamedQuestion(fullQuestion.slice(0, questionIndex + 1));
+              questionIndex++;
+            } else {
+              clearInterval(questionInterval);
+              
+              // Stream answer
+              setTimeout(() => {
+                const answerInterval = setInterval(() => {
+                  if (answerIndex < fullAnswer.length) {
+                    setStreamedAnswer(fullAnswer.slice(0, answerIndex + 1));
+                    answerIndex++;
+                  } else {
+                    clearInterval(answerInterval);
+                    
+                    // Stream note
+                    setTimeout(() => {
+                      const noteInterval = setInterval(() => {
+                        if (noteIndex < fullNote.length) {
+                          setStreamedNote(fullNote.slice(0, noteIndex + 1));
+                          noteIndex++;
+                        } else {
+                          clearInterval(noteInterval);
+                        }
+                      }, 20);
+                    }, 300);
+                  }
+                }, 15);
+              }, 500);
+            }
+          }, 30);
+        }, 500);
+      }
+    }, 30);
+
+    return () => {
+      clearInterval(titleInterval);
+    };
+  }, []);
 
   const handleSubmit = async (event) => {
     event.preventDefault();
@@ -60,21 +132,6 @@ function AuthPage({ session, onAuthComplete }) {
     }
   };
 
-  const handleMagicLink = async () => {
-    setLoading(true);
-    setError('');
-    setMessage('');
-    try {
-      const { error: magicError } = await supabase.auth.signInWithOtp({ email });
-      if (magicError) throw magicError;
-      setMessage('Magic link sent. Check your email.');
-    } catch (err) {
-      setError(err.message || 'Unable to send magic link');
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleSignOut = async () => {
     await supabase.auth.signOut();
     onAuthComplete?.(null);
@@ -85,7 +142,10 @@ function AuthPage({ session, onAuthComplete }) {
       <section className="hero-section">
         <div className="hero-brand">CHAT A.I+</div>
         <div className="hero-content">
-          <h1 className="hero-title">Learn, Discover & Automate in One Place.</h1>
+          <h1 className="hero-title">
+            {streamedTitle}
+            {streamedTitle.length < fullTitle.length && <span className="cursor">|</span>}
+          </h1>
 
           <div className="chat-mock">
             <div className="chat-toolbar">
@@ -95,22 +155,34 @@ function AuthPage({ session, onAuthComplete }) {
               <button aria-label="Info"><i className="fas fa-info-circle"></i></button>
             </div>
 
-            <div className="chat-card">
-              <div className="chat-bubble chat-user">CHAT A.I+</div>
-              <div className="chat-bubble chat-assistant">
-                <p className="chat-question">Create a chatbot GPT using python language what will be step for that</p>
-                <ol>
-                  <li>Install the required libraries (transformers via pip).</li>
-                  <li>Load the pre-trained model (choose a GPT size that fits your needs).</li>
-                  <li>Create a chatbot loop to take user input and stream responses.</li>
-                </ol>
-                <p className="chat-note">These steps get you started; add personality and guardrails as needed.</p>
+            {showChat && (
+              <div className="chat-card">
+                {streamedQuestion && (
+                  <div className="chat-bubble chat-user">
+                    {streamedQuestion}
+                    {streamedQuestion.length < fullQuestion.length && <span className="cursor">|</span>}
+                  </div>
+                )}
+                {streamedAnswer && (
+                  <div className="chat-bubble chat-assistant">
+                    <p className="chat-question">
+                      {streamedAnswer}
+                      {streamedAnswer.length < fullAnswer.length && <span className="cursor">|</span>}
+                    </p>
+                    {streamedNote && (
+                      <p className="chat-note">
+                        {streamedNote}
+                        {streamedNote.length < fullNote.length && <span className="cursor">|</span>}
+                      </p>
+                    )}
+                  </div>
+                )}
               </div>
-            </div>
+            )}
 
             <div className="chat-input-bar">
-              <span className="emoji" role="img" aria-label="smile">😊</span>
-              <input type="text" placeholder="Reply..." readOnly />
+              <span className="emoji" role="img" aria-label="sparkle">✨</span>
+              <input type="text" placeholder="Start exploring..." readOnly />
               <button className="send-btn" aria-label="Send"><i className="fas fa-paper-plane"></i></button>
             </div>
           </div>
@@ -235,5 +307,4 @@ function AuthPage({ session, onAuthComplete }) {
     </div>
   );
 }
-
 export default AuthPage;

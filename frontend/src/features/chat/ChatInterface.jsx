@@ -1,12 +1,13 @@
-            <button
-              type="button"
-              className="model-select-btn"
-              onClick={() => setShowModelModal(!showModelModal)}
-            >
-              <span className="model-name">{selectedModel}</span>
-              <i className="fas fa-chevron-down"></i>
-            </button>
-            <button
+import React, { useState, useEffect, useRef } from 'react';
+import ReactMarkdown from 'react-markdown';
+import WelcomePage from '../welcome/WelcomePage';
+import PromptLibrary from '../prompts/PromptLibrary';
+import { API_URL } from '../../lib/api';
+import models from './models';
+import './ChatInterface.css';
+
+function ChatInterface({
+  selectedModel,
   setSelectedModel,
   apiKeys,
   session,
@@ -477,3 +478,66 @@
         <div className="chat-input-section">
           <div className="input-actions-row">
             <button
+              type="button"
+              className="model-select-btn"
+              onClick={() => setShowModelModal(!showModelModal)}
+            >
+              <span className="model-name">{selectedModel}</span>
+              <i className="fas fa-chevron-down"></i>
+            </button>
+            <button
+              type="button"
+              className="action-btn"
+              title="Browse templates"
+              onClick={() => setShowPromptLibrary(true)}
+            >
+              <i className="fas fa-plus"></i>
+            </button>
+            <button type="button" className="action-btn" title="Attach file" onClick={() => {}}>
+              <i className="fas fa-paperclip"></i>
+            </button>
+            <button type="button" className="action-btn" title="Voice input" onClick={() => {}}>
+              <i className="fas fa-microphone"></i>
+            </button>
+            <button type="button" className="action-btn action-btn-highlight" title="Create" onClick={() => {}}>
+              <i className="fas fa-square"></i>
+            </button>
+            <button type="button" className="action-btn" title="Ideas" onClick={() => {}}>
+              <i className="fas fa-lightbulb"></i>
+            </button>
+            <button type="button" className="action-btn" title="Timer" onClick={() => {}}>
+              <i className="fas fa-hourglass-end"></i>
+            </button>
+          </div>
+          <form onSubmit={handleSend} className="chat-input-form">
+            <div className="chat-input-wrapper">
+              <div className="input-row">
+                <span className="input-emoji">😊</span>
+                <input
+                  type="text"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  placeholder="What's in your mind?..."
+                  className="chat-input"
+                  disabled={loading}
+                />
+                <button type="submit" className="btn-send" disabled={loading || !input.trim()}>
+                  <i className="fas fa-paper-plane"></i>
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+
+      <PromptLibrary
+        isModal
+        isOpen={showPromptLibrary}
+        onClose={() => setShowPromptLibrary(false)}
+        onPromptSelected={handlePromptSelected}
+      />
+    </div>
+  );
+}
+
+export default ChatInterface;

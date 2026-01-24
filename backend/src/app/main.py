@@ -53,7 +53,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(
-        "app.main:app",
+        "src.app.main:app",
         host=settings.fastapi_host,
         port=settings.fastapi_port,
         reload=settings.fastapi_reload,

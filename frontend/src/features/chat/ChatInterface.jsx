@@ -33,6 +33,7 @@ function ChatInterface({
   const [showPromptLibrary, setShowPromptLibrary] = useState(false); // prompt modal visibility
   const [copiedMessageId, setCopiedMessageId] = useState(null); // highlight copied message
   const messagesEndRef = useRef(null); // anchor to keep scroll at bottom
+  const inputRef = useRef(null);
 
   // Keep internal sessionId in sync with the selected session (sidebar selection)
   useEffect(() => {
@@ -69,6 +70,12 @@ function ChatInterface({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    if (!inputRef.current) return;
+    inputRef.current.style.height = '0px';
+    inputRef.current.style.height = `${inputRef.current.scrollHeight}px`;
+  }, [input]);
+
   // Resolve provider name to logo asset for the message avatar
   const renderProviderLogo = (provider) => {
     const logos = {
@@ -78,6 +85,16 @@ function ChatInterface({
       groq: '/logos/groq.svg',
     };
     return logos[provider || currentProvider] || '/logos/openai.svg';
+  };
+
+  const getModelContext = (provider) => {
+    const contextMap = {
+      openai: '400K',
+      anthropic: '200K',
+      gemini: '1M',
+      groq: '128K',
+    };
+    return contextMap[provider] || '400K';
   };
 
   // Add emojis to headings for readability (e.g., ✅ Feature, ⚠️ Warning)
@@ -169,6 +186,7 @@ function ChatInterface({
         </span>
         <span className="fab-label">Agents</span>
       </button>
+      
       {/* Prompt library shortcut */}
       <button
         type="button"
@@ -188,9 +206,8 @@ function ChatInterface({
   // 2) Add user message to UI
   // 3) Configure provider + model on backend
   // 4) Stream assistant response and append to the last assistant bubble
-  const handleSend = async (e) => {
-    e.preventDefault();
-    if (!input.trim() || loading) return;
+  const sendMessageText = async (text, { updateTitle = true } = {}) => {
+    if (!text.trim() || loading) return;
 
     // Require auth before chatting (backend expects a session token)
     if (!session?.access_token) {
@@ -206,13 +223,15 @@ function ChatInterface({
     }
 
     // Add user message to UI and update session title in the sidebar
-    const userMessage = input.trim();
+    const userMessage = text.trim();
     const messageTimestamp = new Date().toISOString();
     setInput('');
-    onSessionUpdate?.(sessionId, {
-      title: userMessage.slice(0, 60),
-      timestamp: messageTimestamp,
-    });
+    if (updateTitle) {
+      onSessionUpdate?.(sessionId, {
+        title: userMessage.slice(0, 60),
+        timestamp: messageTimestamp,
+      });
+    }
     updateMessages((prev) => [
       ...prev,
       {
@@ -354,6 +373,30 @@ function ChatInterface({
     }
   };
 
+  const handleSend = async (e) => {
+    e.preventDefault();
+    await sendMessageText(input, { updateTitle: true });
+  };
+
+  const handleInputKeyDown = (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+      event.preventDefault();
+      handleSend(event);
+    }
+  };
+
+  const handleEditMessage = (content) => {
+    if (!content) return;
+    setInput(content);
+    inputRef.current?.focus();
+  };
+
+  const handleRegenerate = (index) => {
+    const previousUser = [...messages].slice(0, index).reverse().find((msg) => msg.role === 'user');
+    if (!previousUser?.content) return;
+    sendMessageText(previousUser.content, { updateTitle: false });
+  };
+
   // Resolve user display name + initials for avatars
   const userName = session?.user?.user_metadata?.full_name || session?.user?.email?.split('@')[0] || 'You';
   const userInitials = userName
@@ -380,6 +423,11 @@ function ChatInterface({
     model.name.toLowerCase().includes(searchModel.toLowerCase())
   );
 
+  const shouldShowTyping = loading && !(
+    messages[messages.length - 1]?.role === 'assistant' &&
+    !messages[messages.length - 1]?.content
+  );
+
   // Render UI
   return (
     <div className="chat-interface">
@@ -394,7 +442,16 @@ function ChatInterface({
               <span className="model-modal-title">
                 <i className="fas fa-brain"></i> {selectedModel}
               </span>
-              <span className="model-count">400K</span>
+              <span className="model-count">{filteredModels.length} models</span>
+            </div>
+            <div className="model-current">
+              <div className="model-row-main">
+                <span className="model-avatar" aria-hidden="true">
+                  <img src={renderProviderLogo(selectedModel)} alt="" />
+                </span>
+                <span className="model-row-name">{selectedModel}</span>
+              </div>
+              <span className="model-row-context">{getModelContext('openai')}</span>
             </div>
             <div className="model-search">
               <i className="fas fa-search"></i>
@@ -407,31 +464,41 @@ function ChatInterface({
                 className="model-search-input"
               />
             </div>
-            <div className="model-list">
+            <div className="model-modal-body">
               {filteredModels.length > 0 ? (
-                filteredModels.map((model) => (
-                  <button
-                    key={model.name}
-                    className={`model-item ${selectedModel === model.name ? 'active' : ''}`}
-                    // Select a model from the list
-                    onClick={() => {
-                      setSelectedModel(model.name);
-                      setShowModelModal(false);
-                      setSearchModel('');
-                    }}
-                  >
-                    <span className="model-item-left">
-                      <i className="fas fa-brain"></i>
-                      <span>{model.name}</span>
-                    </span>
-                    <span className="model-item-right">
-                      <span className="model-cost">400K</span>
-                      <button className="model-add-btn">
-                        <i className="fas fa-plus"></i>
-                      </button>
-                    </span>
-                  </button>
-                ))
+                <div className="model-list">
+                  {filteredModels.map((model) => (
+                    <button
+                      key={model.name}
+                      type="button"
+                      className={`model-row ${selectedModel === model.name ? 'active' : ''}`}
+                      // Select a model from the list
+                      onClick={() => {
+                        setSelectedModel(model.name);
+                        setShowModelModal(false);
+                        setSearchModel('');
+                      }}
+                    >
+                      <div className="model-row-main">
+                        <span className="model-avatar" aria-hidden="true">
+                          <img src={renderProviderLogo(model.provider)} alt="" />
+                        </span>
+                        <span className="model-row-name">{model.name}</span>
+                      </div>
+                      <div className="model-row-meta">
+                        <span className="model-row-context">{getModelContext(model.provider)}</span>
+                        <button
+                          type="button"
+                          className="model-row-action"
+                          onClick={(event) => event.stopPropagation()}
+                          aria-label={`Add ${model.name}`}
+                        >
+                          <i className="fas fa-plus"></i>
+                        </button>
+                      </div>
+                    </button>
+                  ))}
+                </div>
               ) : (
                 <div className="model-empty">No models found</div>
               )}
@@ -444,29 +511,6 @@ function ChatInterface({
       )}
 
       <div className="chat-shell">
-        {/* Chat header: title, subtitle, and user info */}
-        <header className="chat-header">
-          <div className="chat-header-info">
-            <span className="chat-header-badge">CHAT A.I +</span>
-            <h1>{conversationHeading}</h1>
-            <p>{conversationSubtitle}</p>
-          </div>
-          <div className="chat-header-user">
-            {/* User avatar */}
-            <div className="header-avatar">
-              {userAvatar ? <img src={userAvatar} alt={userName} /> : <span>{userInitials}</span>}
-            </div>
-            <div className="header-user-copy">
-              <span className="user-name">{userName}</span>
-              <span className="user-status">Ready to collaborate</span>
-            </div>
-            {/* Shortcut to settings */}
-            <button type="button" className="header-settings-btn" onClick={() => onOpenSettings?.()}>
-              Settings
-            </button>
-          </div>
-        </header>
-
         {hasMessages ? (
           // Message timeline
           <div className="chat-messages">
@@ -503,23 +547,33 @@ function ChatInterface({
                       {/* Render markdown for assistant, plain text for user/error */}
                       {isAssistant ? <ReactMarkdown>{msg.content}</ReactMarkdown> : msg.content}
                     </div>
-                    {isAssistant && msg.content && (
-                      // Copy action visible only for assistant messages
+                    {(isAssistant || isUser) && msg.content && (
                       <div className="message-actions">
                         <button
                           type="button"
                           className={copiedMessageId === index ? 'copied' : ''}
                           onClick={() => handleCopyMessage(msg.content, index)}
                         >
-                          <i className="fas fa-copy"></i> {copiedMessageId === index ? 'Copied' : 'Copy'}
+                          <i className="fas fa-copy"></i>
+                          {copiedMessageId === index ? 'Copied' : 'Copy'}
                         </button>
+                        {isUser && (
+                          <button type="button" onClick={() => handleEditMessage(msg.content)}>
+                            <i className="fas fa-pen"></i> Edit
+                          </button>
+                        )}
+                        {isAssistant && (
+                          <button type="button" onClick={() => handleRegenerate(index)}>
+                            <i className="fas fa-rotate-right"></i> Regenerate
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>
                 </div>
               );
             })}
-            {loading && (
+            {shouldShowTyping && (
               // Typing indicator while waiting for stream
               <div className="message message-assistant typing-message">
                 <div className="message-avatar">
@@ -565,43 +619,46 @@ function ChatInterface({
               <span className="model-name">{selectedModel}</span>
               <i className="fas fa-chevron-down"></i>
             </button>
-            <button
-              type="button"
-              className="action-btn"
-              title="Browse templates"
-              // Open prompt library
-              onClick={() => setShowPromptLibrary(true)}
-            >
+
+
+            {/* <button  type="button" className="action-btn" title="Browse templates">
               <i className="fas fa-plus"></i>
-            </button>
-            <button type="button" className="action-btn" title="Attach file" onClick={() => {}}>
+            </button> */}
+
+            {/* <button type="button" className="action-btn" title="Attach file" onClick={() => {}}>
               <i className="fas fa-paperclip"></i>
             </button>
+
             <button type="button" className="action-btn" title="Voice input" onClick={() => {}}>
               <i className="fas fa-microphone"></i>
             </button>
+
             <button type="button" className="action-btn action-btn-highlight" title="Create" onClick={() => {}}>
               <i className="fas fa-square"></i>
             </button>
+
             <button type="button" className="action-btn" title="Ideas" onClick={() => {}}>
               <i className="fas fa-lightbulb"></i>
             </button>
+            
             <button type="button" className="action-btn" title="Timer" onClick={() => {}}>
               <i className="fas fa-hourglass-end"></i>
-            </button>
+            </button> */}
           </div>
           <form onSubmit={handleSend} className="chat-input-form">
             <div className="chat-input-wrapper">
               <div className="input-row">
                 <span className="input-emoji">😊</span>
                 {/* User input text field */}
-                <input
-                  type="text"
+                <textarea
+                  ref={inputRef}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleInputKeyDown}
                   placeholder="What's in your mind?..."
                   className="chat-input"
                   disabled={loading}
+                  rows={1}
                 />
                 {/* Send button */}
                 <button type="submit" className="btn-send" disabled={loading || !input.trim()}>

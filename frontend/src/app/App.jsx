@@ -97,6 +97,26 @@ function App() {
     return () => listener?.subscription?.unsubscribe();
   }, []);
 
+  useEffect(() => {
+    if (!session || currentPage !== 'chat' || currentSessionId) return;
+    if (chatSessions.length > 0) {
+      setCurrentSessionId(chatSessions[0].id);
+      return;
+    }
+
+    const newSession = {
+      id: `session-${Date.now()}`,
+      title: 'New chat',
+      timestamp: new Date().toISOString(),
+    };
+    updateSessions((prev) => {
+      const next = [newSession, ...prev.filter((s) => s.id !== newSession.id)];
+      return next.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    });
+    setCurrentSessionId(newSession.id);
+    updateSessionMessages(newSession.id, []);
+  }, [session, currentPage, currentSessionId, chatSessions]);
+
   const updateSessions = (updater) => {
     setChatSessions((prev) => {
       const next = updater(prev);

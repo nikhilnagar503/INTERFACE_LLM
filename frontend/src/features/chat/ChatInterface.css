@@ -855,11 +855,7 @@
   max-width: 75%;
 }
 
-  background: transparent;
-  border: none;
-  box-shadow: none;
-  padding: 0;
-  max-width: 70%;
+  
 .message-text {
   color: var(--text-primary);
   font-size: 0.9375rem;
@@ -867,7 +863,7 @@
   word-wrap: break-word;
   white-space: pre-wrap;
 }
-  color: var(--text-primary);
+
 /* User Messages */
 .message-user .message-text {
   background: transparent;

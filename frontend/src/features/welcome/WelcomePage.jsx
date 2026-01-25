@@ -4,67 +4,40 @@ import './WelcomePage.css';
 function WelcomePage({ onSuggestionClick, hasApiKeys, onOpenSettings }) {
   const suggestionCards = [
     {
-      id: 'explore',
-      icon: '🌐',
-      title: 'Explore',
-      description: 'Learn how to use chat.ai platform for your needs',
-      dark: true,
+      id: 'draft',
+      icon: '📝',
+      title: 'Draft a proposal',
+      description: 'Create a one‑page project proposal for a new feature launch',
     },
     {
-      id: 'explain',
-      icon: '💭',
-      title: '"Explain"',
-      description: 'Quantum computing in simple terms"',
-      hasArrow: true,
+      id: 'summary',
+      icon: '📌',
+      title: 'Summarize a meeting',
+      description: 'Turn raw notes into clear action items and owners',
     },
     {
-      id: 'howto',
-      icon: '🔧',
-      title: '"How to"',
-      description: 'Make a search engine platform like google',
-      hasArrow: true,
+      id: 'sql',
+      icon: '🧩',
+      title: 'Generate SQL',
+      description: 'Write a query to track weekly active users by plan',
     },
     {
-      id: 'capabilities',
-      icon: '⚡',
-      title: 'Capabilities',
-      description: 'How much capable chat.ai to full-fill your needs',
-      dark: true,
+      id: 'support',
+      icon: '💬',
+      title: 'Reply to a customer',
+      description: 'Draft a friendly response for a billing question',
     },
     {
-      id: 'remember',
-      icon: '🧠',
-      title: '"Remember"',
-      description: 'quantum computing in simple terms"',
-      hasArrow: true,
+      id: 'roadmap',
+      icon: '🗺️',
+      title: 'Brainstorm roadmap',
+      description: 'List high‑impact features for Q2 planning',
     },
     {
-      id: 'allows',
-      icon: '✅',
-      title: '"Allows"',
-      description: 'User to provide follow-up corrections',
-      hasArrow: true,
-    },
-    {
-      id: 'limitation',
-      icon: '⚠️',
-      title: 'Limitation',
-      description: 'How much capable chat.ai to full-fill your needs',
-      dark: true,
-    },
-    {
-      id: 'may',
-      icon: '❌',
-      title: '"May"',
-      description: 'Occasionally generate incorrect information',
-      hasArrow: true,
-    },
-    {
-      id: 'limited',
-      icon: '📅',
-      title: '"Limited"',
-      description: 'Knowledge of world and events after 2021',
-      hasArrow: true,
+      id: 'release',
+      icon: '🚀',
+      title: 'Write release notes',
+      description: 'Summarize changes for v2.4.0 in a concise format',
     },
   ];
 
@@ -93,11 +66,14 @@ function WelcomePage({ onSuggestionClick, hasApiKeys, onOpenSettings }) {
 
         {/* Badge */}
         <div className="welcome-badge">
-          <span>CHAT A.I+</span>
+          <span>WORKSPACE ASSISTANT</span>
         </div>
 
         {/* Headline */}
-        <h1 className="welcome-headline">Good day! How may I assist you today?</h1>
+        <h1 className="welcome-headline">What would you like to build today?</h1>
+        <p className="welcome-subtitle">
+          Get fast help with product, engineering, and support tasks. Start with a prompt below.
+        </p>
 
         {/* Suggestion Cards Grid */}
         <div className="suggestions-grid">

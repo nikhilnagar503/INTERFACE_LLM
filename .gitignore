@@ -77,3 +77,4 @@ __pycache__/
 *.pyc
 node_modules/
 .cache/
+git rm --cached -r node_modules/.cache/

@@ -1064,6 +1064,8 @@
   transition: all var(--transition-fast);
   overflow: hidden;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.06);
+  font-family: 'Inter', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+  font-size: 1.08rem;
 }
 
 .chat-input-wrapper:focus-within {
@@ -1096,13 +1098,15 @@
   border: none;
   outline: none;
   color: var(--text-primary);
-  font-size: 15px;
+  font-family: inherit;
+  font-size: 1.08rem;
   padding: 10px 0;
-  font-family: 'Inter', sans-serif;
   resize: none;
-  line-height: 1.5;
+  line-height: 1.6;
   max-height: 180px;
   overflow-y: auto;
+  letter-spacing: 0.01em;
+  font-weight: 400;
 }
 
 .chat-input::placeholder {

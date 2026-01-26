@@ -7,6 +7,7 @@ function ChatSidebar({
   currentSessionId,
   sessions = [],
   onClearSessions,
+  onDeleteSession,
   onOpenSettings,
   onOpenProfile,
   session,
@@ -52,6 +53,34 @@ function ChatSidebar({
     .slice(0, 2)
     .toUpperCase();
 
+  const renderSessionItem = (s) => (
+    <div
+      key={s.id}
+      className={`session-item ${currentSessionId === s.id ? 'active' : ''}`}
+    >
+      <button
+        className="session-select"
+        onClick={() => onSelectSession(s)}
+        type="button"
+      >
+        <i className="fas fa-message"></i>
+        <span className="session-title">{s.title}</span>
+      </button>
+      <button
+        className="session-delete-btn"
+        type="button"
+        onClick={(event) => {
+          event.stopPropagation();
+          onDeleteSession?.(s.id);
+        }}
+        aria-label="Delete session"
+        title="Delete session"
+      >
+        <i className="fas fa-trash"></i>
+      </button>
+    </div>
+  );
+
   return (
     <aside className="chat-sidebar">
       {/* Logo */}
@@ -94,46 +123,19 @@ function ChatSidebar({
           <>
             {grouped.today.length > 0 && (
               <>
-                {grouped.today.map((s) => (
-                  <button
-                    key={s.id}
-                    className={`session-item ${currentSessionId === s.id ? 'active' : ''}`}
-                    onClick={() => onSelectSession(s)}
-                  >
-                    <i className="fas fa-message"></i>
-                    <span className="session-title">{s.title}</span>
-                  </button>
-                ))}
+                {grouped.today.map((s) => renderSessionItem(s))}
               </>
             )}
             {grouped.last7Days.length > 0 && (
               <>
                 <div className="session-group-label">Last 7 Days</div>
-                {grouped.last7Days.map((s) => (
-                  <button
-                    key={s.id}
-                    className={`session-item ${currentSessionId === s.id ? 'active' : ''}`}
-                    onClick={() => onSelectSession(s)}
-                  >
-                    <i className="fas fa-message"></i>
-                    <span className="session-title">{s.title}</span>
-                  </button>
-                ))}
+                {grouped.last7Days.map((s) => renderSessionItem(s))}
               </>
             )}
             {grouped.older.length > 0 && (
               <>
                 <div className="session-group-label">Older</div>
-                {grouped.older.map((s) => (
-                  <button
-                    key={s.id}
-                    className={`session-item ${currentSessionId === s.id ? 'active' : ''}`}
-                    onClick={() => onSelectSession(s)}
-                  >
-                    <i className="fas fa-message"></i>
-                    <span className="session-title">{s.title}</span>
-                  </button>
-                ))}
+                {grouped.older.map((s) => renderSessionItem(s))}
               </>
             )}
           </>

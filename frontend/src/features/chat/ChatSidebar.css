@@ -175,6 +175,13 @@
 .session-item {
   display: flex;
   align-items: center;
+  gap: 6px;
+}
+
+.session-select {
+  flex: 1;
+  display: flex;
+  align-items: center;
   gap: 10px;
   width: 100%;
   padding: 10px 12px;
@@ -188,22 +195,41 @@
   transition: all 0.15s ease;
 }
 
-.session-item:hover {
+.session-item:hover .session-select {
   background: #f1f5f9;
 }
 
-.session-item.active {
+.session-item.active .session-select {
   background: #eff6ff;
   color: #5b63ff;
 }
 
-.session-item i {
+.session-select i {
   font-size: 14px;
   color: #94a3b8;
 }
 
-.session-item.active i {
+.session-item.active .session-select i {
   color: #5b63ff;
+}
+
+.session-delete-btn {
+  width: 30px;
+  height: 30px;
+  border: none;
+  border-radius: 8px;
+  background: transparent;
+  color: #94a3b8;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.session-delete-btn:hover {
+  background: #fee2e2;
+  color: #ef4444;
 }
 
 .session-title {

@@ -3,6 +3,7 @@ import ReactMarkdown from 'react-markdown';
 import WelcomePage from '../welcome/WelcomePage';
 import PromptLibrary from '../prompts/PromptLibrary';
 import { API_URL } from '../../lib/api';
+import { databaseAPI } from '../../lib/databaseAPI';
 import models from './models';
 import './ChatInterface.css';
 
@@ -55,6 +56,11 @@ function ChatInterface({
       onMessagesChange?.(next);
       return next;
     });
+  };
+
+  const updateMessageByLocalId = (localId, updates) => {
+    if (!localId) return;
+    updateMessages((prev) => prev.map((msg) => (msg.localId === localId ? { ...msg, ...updates } : msg)));
   };
 
   // If a prompt is selected elsewhere, prefill the input and close the library
@@ -232,9 +238,11 @@ function ChatInterface({
         timestamp: messageTimestamp,
       });
     }
+    const userLocalId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
     updateMessages((prev) => [
       ...prev,
       {
+        localId: userLocalId,
         role: 'user',
         content: userMessage,
         timestamp: messageTimestamp,
@@ -290,17 +298,18 @@ function ChatInterface({
         const configError = await configureResponse.json();
         throw new Error(configError.detail || 'Failed to configure LLM');
       }
-
-      // Add placeholder assistant message for streaming (UI updates as chunks arrive)
-      updateMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: '',
-          provider,
-          timestamp: new Date().toISOString(),
-        },
-      ]);
+      
+      // Save user message to Supabase
+      try {
+        const saved = await databaseAPI.messages.saveMessage(sessionId, 'user', userMessage);
+        if (saved?.id) {
+          updateMessageByLocalId(userLocalId, { id: saved.id });
+        }
+        console.log('✅ User message saved to Supabase');
+      } catch (error) {
+        console.error('❌ Failed to save user message:', error);
+        console.error('Session ID:', sessionId);
+      }
 
       // Stream assistant response
       const response = await fetch(`${API_URL}/api/chat/stream`, {
@@ -324,6 +333,19 @@ function ChatInterface({
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
       let streamedContent = '';
+      
+      // Add placeholder assistant message for streaming (UI updates as chunks arrive)
+      const assistantLocalId = `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+      updateMessages((prev) => [
+        ...prev,
+        {
+          localId: assistantLocalId,
+          role: 'assistant',
+          content: '',
+          provider,
+          timestamp: new Date().toISOString(),
+        },
+      ]);
 
       while (true) {
         const { done, value } = await reader.read();
@@ -355,6 +377,20 @@ function ChatInterface({
           } catch (_err) {
             continue;
           }
+        }
+      }
+      
+      // Save assistant message to Supabase
+      if (streamedContent) {
+        try {
+          const saved = await databaseAPI.messages.saveMessage(sessionId, 'assistant', streamedContent, selectedModel);
+          if (saved?.id) {
+            updateMessageByLocalId(assistantLocalId, { id: saved.id });
+          }
+          console.log('✅ Assistant message saved to Supabase');
+        } catch (error) {
+          console.error('❌ Failed to save assistant message:', error);
+          console.error('Session ID:', sessionId);
         }
       }
     } catch (err) {
@@ -389,6 +425,17 @@ function ChatInterface({
     if (!content) return;
     setInput(content);
     inputRef.current?.focus();
+  };
+
+  const handleDeleteMessage = async (message, index) => {
+    try {
+      if (message?.id) {
+        await databaseAPI.messages.deleteMessage(message.id);
+      }
+      updateMessages((prev) => prev.filter((_, i) => i !== index));
+    } catch (error) {
+      console.error('Failed to delete message:', error);
+    }
   };
 
   const handleRegenerate = (index) => {
@@ -567,6 +614,9 @@ function ChatInterface({
                             <i className="fas fa-rotate-right"></i> Regenerate
                           </button>
                         )}
+                        <button type="button" onClick={() => handleDeleteMessage(msg, index)}>
+                          <i className="fas fa-trash"></i> Delete
+                        </button>
                       </div>
                     )}
                   </div>

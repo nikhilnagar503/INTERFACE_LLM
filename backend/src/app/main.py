@@ -12,7 +12,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 from src.app.core.config import settings
-from src.app.routes import auth, chat, health
+from src.app.routes import auth, chat, health, database
 
 app = FastAPI(title="LLM Chatbot API", version="1.1.0")
 
@@ -27,6 +27,7 @@ app.add_middleware(
 app.include_router(health.router)
 app.include_router(auth.router)
 app.include_router(chat.router)
+app.include_router(database.router)
 
 
 @app.get("/", tags=["Info"])

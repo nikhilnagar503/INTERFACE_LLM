@@ -225,13 +225,14 @@ class DatabaseService:
             raise HTTPException(status_code=500, detail=f"Failed to delete chat session: {str(e)}")
 
     # ==================== CHAT MESSAGES ====================
-    def save_message(self, session_id: str, role: str, content: str, model: str = None, tokens_used: int = None, metadata: Dict = None) -> Dict[str, Any]:
+    def save_message(self, session_id: str, user_id: str, role: str, content: str, model: str = None, tokens_used: int = None, metadata: Dict = None) -> Dict[str, Any]:
         """Save a message to a chat session"""
         try:
             response = (
                 self.supabase.table("chat_messages")
                 .insert({
                     "session_id": session_id,
+                    "user_id": user_id,
                     "role": role,
                     "content": content,
                     "model": model,

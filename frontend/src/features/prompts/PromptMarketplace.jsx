@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import PromptSearchBar from './PromptSearchBar';
 import PromptGrid from './PromptGrid';
-import { fetchPromptTemplates, PROMPT_TEMPLATES, addCustomPrompt, getCustomPrompts } from './promptTemplates';
+import { databaseAPI } from '../../lib/databaseAPI';
 import './PromptMarketplace.css';
 
 /**
@@ -15,49 +15,32 @@ import './PromptMarketplace.css';
  * - selectedPrompts: array - list of currently selected prompt IDs
  */
 function PromptMarketplace({ isOpen, onClose, onSelectPrompt, selectedPrompts = [] }) {
-  const [templates, setTemplates] = useState([...PROMPT_TEMPLATES]); // Initialize with built-in templates
+  const [templates, setTemplates] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedTag, setSelectedTag] = useState('');
   const [error, setError] = useState(null);
-  const [newPromptForm, setNewPromptForm] = useState({
-    title: '',
-    description: '',
-    content: '',
-    tags: ''
-  });
 
   // Extract all unique tags from templates
-  const allTags = [...new Set(templates.flatMap(p => p.tags))];
+  const allTags = [...new Set(templates.flatMap(p => p.tags || []))];
 
-  // Load templates on first open (lazy load + cache)
+  // Load system prompts from Supabase on first open
   useEffect(() => {
-    if (isOpen && templates.length === 0) {
-      loadTemplates();
+    if (isOpen) {
+      loadSystemPrompts();
     }
   }, [isOpen]);
 
-  // Load templates from cache or API
-  const loadTemplates = async () => {
+  const loadSystemPrompts = async () => {
     setIsLoading(true);
     setError(null);
     try {
-      // Check if cached in localStorage
-      const cachedTemplates = localStorage.getItem('promptTemplates');
-      if (cachedTemplates) {
-        const parsed = JSON.parse(cachedTemplates);
-        setTemplates(parsed);
-      } else {
-        // Fetch from API (or use built-in)
-        const data = await fetchPromptTemplates();
-        setTemplates(data);
-        // Cache for future use
-        localStorage.setItem('promptTemplates', JSON.stringify(data));
-      }
+      const data = await databaseAPI.prompts.getSystemPrompts();
+      setTemplates(data || []);
     } catch (err) {
-      console.error('Error loading templates:', err);
-      setError('Failed to load templates. Using default templates.');
-      setTemplates(PROMPT_TEMPLATES);
+      console.error('Error loading system prompts:', err);
+      setError('Failed to load prompts from database.');
+      setTemplates([]);
     } finally {
       setIsLoading(false);
     }
@@ -75,33 +58,6 @@ function PromptMarketplace({ isOpen, onClose, onSelectPrompt, selectedPrompts = 
   // Handle template selection
   const handleSelectTemplate = (template) => {
     onSelectPrompt(template);
-  };
-
-  // Handle adding new custom prompt
-  const handleAddPrompt = () => {
-    if (!newPromptForm.title || !newPromptForm.content) {
-      alert('Please fill in title and content');
-      return;
-    }
-    
-    const prompt = {
-      title: newPromptForm.title,
-      description: newPromptForm.description,
-      content: newPromptForm.content,
-      tags: newPromptForm.tags ? newPromptForm.tags.split(',').map(t => t.trim()) : ['Custom']
-    };
-    
-    addCustomPrompt(prompt);
-    
-    // Refresh templates to show new custom prompt
-    const customPrompts = getCustomPrompts();
-    setTemplates([
-      ...templates.filter(t => t.isBuiltIn),
-      ...customPrompts
-    ]);
-    
-    // Reset form
-    setNewPromptForm({ title: '', description: '', content: '', tags: '' });
   };
 
   // Clear all filters

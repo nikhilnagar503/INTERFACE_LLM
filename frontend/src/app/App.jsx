@@ -10,6 +10,7 @@ import ProfilePage from '../features/profile/ProfilePage';
 import PromptLibrary from '../features/prompts/PromptLibrary';
 // Supabase client for authentication and user management
 import { supabase } from '../lib/supabaseClient';
+import { databaseAPI } from '../lib/databaseAPI';
 import './App.css';
 
 
@@ -65,30 +66,47 @@ function App() {
         // If logged in, load API keys and avatar, go to chat page
         loadUserApiKeys(data.session.user.id);
         refreshUserAvatar(data.session.user);
+        
+        // Create user profile if it doesn't exist (for new users)
+        try {
+          await databaseAPI.auth?.createProfile?.({
+            display_name: data.session.user.email?.split('@')[0] || 'User',
+            avatar_url: null
+          }).catch(() => {
+            // Profile may already exist, that's fine
+          });
+        } catch (err) {
+          console.warn('Could not ensure profile exists:', err);
+        }
+        
         setCurrentPage('chat');
       }
-      // Load chat sessions from localStorage
-      const storedSessions = localStorage.getItem('chat_sessions');
-      if (storedSessions) {
+      // Load chat sessions from Supabase
+      if (data.session) {
         try {
-          const parsed = JSON.parse(storedSessions);
-          if (Array.isArray(parsed)) {
-            setChatSessions(parsed);
+          const sessions = await databaseAPI.sessions.getSessions();
+          setChatSessions(sessions || []);
+          // Load messages for each session
+          const messagesMap = {};
+          for (const sess of sessions || []) {
+            const msgs = await databaseAPI.messages.getMessages(sess.id);
+            messagesMap[sess.id] = msgs || [];
           }
+          setSessionMessages(messagesMap);
         } catch (error) {
-          console.error('Failed to parse chat sessions', error);
-        }
-      }
-      // Load chat messages for all sessions from localStorage
-      const storedMessages = localStorage.getItem('chat_session_messages');
-      if (storedMessages) {
-        try {
-          const parsedMessages = JSON.parse(storedMessages);
-          if (parsedMessages && typeof parsedMessages === 'object') {
-            setSessionMessages(parsedMessages);
+          console.error('Failed to load sessions/messages from Supabase:', error);
+          // Fallback to localStorage
+          const storedSessions = localStorage.getItem('chat_sessions');
+          if (storedSessions) {
+            try {
+              const parsed = JSON.parse(storedSessions);
+              if (Array.isArray(parsed)) {
+                setChatSessions(parsed);
+              }
+            } catch (error) {
+              console.error('Failed to parse chat sessions', error);
+            }
           }
-        } catch (error) {
-          console.error('Failed to parse chat messages', error);
         }
       }
       setLoading(false); // Hide loading spinner
@@ -128,34 +146,56 @@ function App() {
       return;
     }
 
-    // If no sessions exist, create a new chat session
-    const newSession = {
-      id: `session-${Date.now()}`,
-      title: 'New chat',
-      timestamp: new Date().toISOString(),
+    // If no sessions exist, create a new chat session in Supabase
+    const createInitialSession = async () => {
+      try {
+        const created = await databaseAPI.sessions.createSession('New chat');
+        const newSession = {
+          id: created.id,
+          title: created.title,
+          timestamp: created.created_at,
+        };
+        updateSessions((prev) => {
+          const next = [newSession, ...prev.filter((s) => s.id !== newSession.id)];
+          return next.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        });
+        setCurrentSessionId(newSession.id);
+        updateSessionMessages(newSession.id, []);
+      } catch (error) {
+        console.error('Failed to create initial session:', error);
+        // Fallback to local session
+        const newSession = {
+          id: `session-${Date.now()}`,
+          title: 'New chat',
+          timestamp: new Date().toISOString(),
+        };
+        updateSessions((prev) => {
+          const next = [newSession, ...prev.filter((s) => s.id !== newSession.id)];
+          return next.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+        });
+        setCurrentSessionId(newSession.id);
+        updateSessionMessages(newSession.id, []);
+      }
     };
-    updateSessions((prev) => {
-      const next = [newSession, ...prev.filter((s) => s.id !== newSession.id)];
-      return next.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    });
-    setCurrentSessionId(newSession.id);
-    updateSessionMessages(newSession.id, []);
+    createInitialSession();
   }, [session, currentPage, currentSessionId, chatSessions]);
 
-  // Update the list of chat sessions and persist to localStorage
+  // Update the list of chat sessions and persist to Supabase
   const updateSessions = (updater) => {
     setChatSessions((prev) => {
       const next = updater(prev);
+      // Keep a copy in localStorage as cache
       localStorage.setItem('chat_sessions', JSON.stringify(next));
       return next;
     });
   };
 
-  // Update the messages for a given session and persist to localStorage
+  // Update the messages for a given session and persist to Supabase
   const updateSessionMessages = (sessionId, messages) => {
     if (!sessionId) return;
     setSessionMessages((prev) => {
       const next = { ...prev, [sessionId]: messages };
+      // Keep a copy in localStorage as cache
       localStorage.setItem('chat_session_messages', JSON.stringify(next));
       return next;
     });
@@ -221,19 +261,37 @@ function App() {
   };
 
   // Create a new chat session and switch to it
-  const handleNewChat = () => {
-    const newSession = {
-      id: `session-${Date.now()}`,
-      title: 'New chat',
-      timestamp: new Date().toISOString(),
-    };
-    updateSessions((prev) => {
-      const next = [newSession, ...prev.filter((s) => s.id !== newSession.id)];
-      return next.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    });
-    setCurrentSessionId(newSession.id);
-    updateSessionMessages(newSession.id, []);
-    setCurrentPage('chat');
+  const handleNewChat = async () => {
+    try {
+      const created = await databaseAPI.sessions.createSession('New chat');
+      const newSession = {
+        id: created.id,
+        title: created.title,
+        timestamp: created.created_at,
+      };
+      updateSessions((prev) => {
+        const next = [newSession, ...prev.filter((s) => s.id !== newSession.id)];
+        return next.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      });
+      setCurrentSessionId(newSession.id);
+      updateSessionMessages(newSession.id, []);
+      setCurrentPage('chat');
+    } catch (error) {
+      console.error('Failed to create session:', error);
+      // Fallback to local session
+      const newSession = {
+        id: `session-${Date.now()}`,
+        title: 'New chat',
+        timestamp: new Date().toISOString(),
+      };
+      updateSessions((prev) => {
+        const next = [newSession, ...prev.filter((s) => s.id !== newSession.id)];
+        return next.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+      });
+      setCurrentSessionId(newSession.id);
+      updateSessionMessages(newSession.id, []);
+      setCurrentPage('chat');
+    }
   };
 
   // Select an existing chat session
@@ -242,18 +300,59 @@ function App() {
     // Optionally load session data here
   };
 
-  // Clear all chat sessions and messages
-  const handleClearSessions = () => {
-    localStorage.removeItem('chat_sessions');
-    localStorage.removeItem('chat_session_messages');
-    setChatSessions([]);
-    setSessionMessages({});
-    setCurrentSessionId(null);
+  // Clear all chat sessions and messages (backend + cache)
+  const handleClearSessions = async () => {
+    try {
+      const sessions = await databaseAPI.sessions.getSessions();
+      await Promise.all((sessions || []).map((s) => databaseAPI.sessions.deleteSession(s.id)));
+    } catch (err) {
+      console.error('Failed to clear sessions in backend:', err);
+    } finally {
+      localStorage.removeItem('chat_sessions');
+      localStorage.removeItem('chat_session_messages');
+      setChatSessions([]);
+      setSessionMessages({});
+      setCurrentSessionId(null);
+    }
+  };
+
+  const handleDeleteSession = async (sessionId) => {
+    if (!sessionId) return;
+    try {
+      await databaseAPI.sessions.deleteSession(sessionId);
+    } catch (err) {
+      console.error('Failed to delete session:', err);
+    }
+
+    updateSessions((prev) => prev.filter((s) => s.id !== sessionId));
+    setSessionMessages((prev) => {
+      const next = { ...prev };
+      delete next[sessionId];
+      localStorage.setItem('chat_session_messages', JSON.stringify(next));
+      return next;
+    });
+
+    if (currentSessionId === sessionId) {
+      const remaining = chatSessions.filter((s) => s.id !== sessionId);
+      const nextSession = remaining[0]?.id || null;
+      setCurrentSessionId(nextSession);
+    }
   };
 
   // Update a chat session's metadata (title, timestamp)
-  const handleSessionUpdate = (sessionId, data) => {
+  const handleSessionUpdate = async (sessionId, data) => {
     if (!sessionId) return;
+    // Persist title/model to backend
+    if (data?.title || data?.modelUsed) {
+      try {
+        await databaseAPI.sessions.updateSession(sessionId, {
+          title: data.title,
+          modelUsed: data.modelUsed,
+        });
+      } catch (err) {
+        console.error('Failed to update session title/model:', err);
+      }
+    }
     updateSessions((prev) => {
       const existingIndex = prev.findIndex((s) => s.id === sessionId);
       const now = data?.timestamp || new Date().toISOString();
@@ -379,6 +478,7 @@ function App() {
           currentSessionId={currentSessionId}
           sessions={chatSessions}
           onClearSessions={handleClearSessions}
+          onDeleteSession={handleDeleteSession}
           onOpenSettings={() => setCurrentPage('settings')}
           onOpenProfile={() => setCurrentPage('profile')}
           session={session}

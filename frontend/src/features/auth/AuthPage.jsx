@@ -115,6 +115,9 @@ function AuthPage({ session, onAuthComplete }) {
         });
         if (signUpError) throw signUpError;
         
+        // Don't create profile here - it will be created on first chat access
+        // This prevents signup failures due to database constraints
+        
         // Check if email confirmation is required
         if (data.user && !data.session) {
           setMessage('Sign-up successful! Please check your email and click the confirmation link to verify your account.');

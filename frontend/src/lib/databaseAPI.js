@@ -1,6 +1,6 @@
 /**
  * Database API client for frontend
- * Handles all CRUD operations for sessions, messages, API keys, and settings
+ * Handles all CRUD operations for sessions, messages, and prompts via backend
  */
 
 import { supabase } from './supabaseClient';
@@ -39,39 +39,6 @@ async function apiRequest(endpoint, options = {}) {
 
   return response.json();
 }
-
-// ==================== SETTINGS API ====================
-export const settingsAPI = {
-  async getSettings() {
-    return apiRequest('/settings');
-  },
-
-  async updateSettings(updates) {
-    const params = new URLSearchParams();
-    if (updates.temperature !== undefined) params.append('default_temperature', updates.temperature);
-    if (updates.maxTokens !== undefined) params.append('default_max_tokens', updates.maxTokens);
-    if (updates.sidebarCollapsed !== undefined) params.append('sidebar_collapsed', updates.sidebarCollapsed);
-    
-    return apiRequest(`/settings?${params.toString()}`, { method: 'PUT' });
-  },
-};
-
-// ==================== API KEYS API ====================
-export const apiKeysAPI = {
-  async getApiKeys() {
-    return apiRequest('/api-keys');
-  },
-
-  async saveApiKey(provider, apiKey) {
-    return apiRequest(`/api-keys?provider=${provider}&api_key=${encodeURIComponent(apiKey)}`, {
-      method: 'POST',
-    });
-  },
-
-  async deleteApiKey(apiKeyId) {
-    return apiRequest(`/api-keys/${apiKeyId}`, { method: 'DELETE' });
-  },
-};
 
 // ==================== CHAT SESSIONS API ====================
 export const sessionsAPI = {
@@ -137,12 +104,59 @@ export const messagesAPI = {
   },
 };
 
+// ==================== PROMPTS API ====================
+export const promptsAPI = {
+  async getSystemPrompts() {
+    // System prompts don't require auth
+    const response = await fetch(`${API_BASE}/prompts/system`);
+    if (!response.ok) {
+      throw new Error('Failed to fetch system prompts');
+    }
+    return response.json();
+  },
+
+  async getUserPrompts() {
+    return apiRequest('/prompts');
+  },
+
+  async createPrompt(prompt) {
+    return apiRequest('/prompts', {
+      method: 'POST',
+      body: JSON.stringify(prompt),
+    });
+  },
+
+  async updatePrompt(promptId, updates) {
+    return apiRequest(`/prompts/${promptId}`, {
+      method: 'PUT',
+      body: JSON.stringify(updates),
+    });
+  },
+
+  async deletePrompt(promptId) {
+    return apiRequest(`/prompts/${promptId}`, { method: 'DELETE' });
+  }
+};
+
+// ==================== AUTH API ====================
+const authAPI = {
+  async createProfile(profileData) {
+    return apiRequest('/auth/profile', {
+      method: 'POST',
+      body: JSON.stringify(profileData),
+    }).catch(() => {
+      // Profile may already exist, ignore error
+      return {};
+    });
+  },
+};
+
 // ==================== UTILITY FUNCTIONS ====================
 export const databaseAPI = {
-  settings: settingsAPI,
-  apiKeys: apiKeysAPI,
   sessions: sessionsAPI,
   messages: messagesAPI,
+  prompts: promptsAPI,
+  auth: authAPI,
 };
 
 export default databaseAPI;

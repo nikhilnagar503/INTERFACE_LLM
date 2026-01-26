@@ -1,13 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import PromptMarketplace from './PromptMarketplace';
+import { databaseAPI } from '../../lib/databaseAPI';
 import './PromptLibrary.css';
 
 function PromptLibrary({ onUsePrompt, onPromptSelected, isModal = false, isOpen = true, onClose }) {
-  const [prompts, setPrompts] = useState(() => {
-    // Load from localStorage if available, otherwise start empty
-    const saved = localStorage.getItem('userPrompts');
-    return saved ? JSON.parse(saved) : [];
-  });
+  const [prompts, setPrompts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedPrompt, setSelectedPrompt] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
@@ -21,6 +19,26 @@ function PromptLibrary({ onUsePrompt, onPromptSelected, isModal = false, isOpen 
     content: '',
     tags: []
   });
+
+  // Load user prompts from Supabase on mount
+  useEffect(() => {
+    loadUserPrompts();
+  }, []);
+
+  const loadUserPrompts = async () => {
+    setLoading(true);
+    try {
+      const data = await databaseAPI.prompts.getUserPrompts();
+      setPrompts(data || []);
+    } catch (error) {
+      console.error('Failed to load prompts:', error);
+      // Fallback to localStorage
+      const saved = localStorage.getItem('userPrompts');
+      setPrompts(saved ? JSON.parse(saved) : []);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   if (isModal && !isOpen) {
     return null;
@@ -44,25 +62,33 @@ function PromptLibrary({ onUsePrompt, onPromptSelected, isModal = false, isOpen 
     );
   };
 
-  const handleAddPrompt = () => {
+  const handleAddPrompt = async () => {
     if (!newPrompt.title || !newPrompt.content) {
       alert('Please fill in title and content');
       return;
     }
-    const prompt = {
-      id: Date.now().toString(),
-      ...newPrompt,
-      tags: newPrompt.tags.length > 0 ? newPrompt.tags : ['Custom']
-    };
-    const updatedPrompts = [...prompts, prompt];
-    setPrompts(updatedPrompts);
-    localStorage.setItem('userPrompts', JSON.stringify(updatedPrompts));
-    setNewPrompt({ title: '', description: '', content: '', tags: [] });
-    setShowAddModal(false);
-    
-    // Show notification
-    setShowNotification(true);
-    setTimeout(() => setShowNotification(false), 3000);
+
+    try {
+      const prompt = {
+        title: newPrompt.title,
+        description: newPrompt.description,
+        content: newPrompt.content,
+        tags: newPrompt.tags.length > 0 ? newPrompt.tags : ['Custom'],
+        is_public: false
+      };
+      
+      const created = await databaseAPI.prompts.createPrompt(prompt);
+      setPrompts([created, ...prompts]);
+      setNewPrompt({ title: '', description: '', content: '', tags: [] });
+      setShowAddModal(false);
+      
+      // Show notification
+      setShowNotification(true);
+      setTimeout(() => setShowNotification(false), 3000);
+    } catch (error) {
+      console.error('Failed to create prompt:', error);
+      alert('Failed to save prompt. Please try again.');
+    }
   };
 
   const usePrompt = () => {
@@ -79,17 +105,28 @@ function PromptLibrary({ onUsePrompt, onPromptSelected, isModal = false, isOpen 
     }
   };
 
-  const handleMarketplaceSelect = (template) => {
-    // Add the selected template to prompts if not already there
-    const exists = prompts.some(p => p.id === template.id);
+  const handleMarketplaceSelect = async (template) => {
+    // Add the selected template to user prompts (clone from system prompt)
+    const exists = prompts.some(p => p.title === template.title);
     if (!exists) {
-      const updatedPrompts = [...prompts, template];
-      setPrompts(updatedPrompts);
-      localStorage.setItem('userPrompts', JSON.stringify(updatedPrompts));
-      
-      // Show notification
-      setShowNotification(true);
-      setTimeout(() => setShowNotification(false), 3000);
+      try {
+        const newPrompt = {
+          title: template.title,
+          description: template.description,
+          content: template.content,
+          tags: template.tags || [],
+          is_public: false
+        };
+        const created = await databaseAPI.prompts.createPrompt(newPrompt);
+        setPrompts([created, ...prompts]);
+        
+        // Show notification
+        setShowNotification(true);
+        setTimeout(() => setShowNotification(false), 3000);
+      } catch (error) {
+        console.error('Failed to import prompt:', error);
+        alert('Failed to import prompt. Please try again.');
+      }
     }
     setSelectedPrompt(template);
     setShowMarketplace(false);

@@ -21,6 +21,8 @@ function App() {
   const [session, setSession] = useState(null);
   // Show loading spinner while checking login status
   const [loading, setLoading] = useState(true);
+  // Track if sessions have been loaded from database
+  const [sessionsLoaded, setSessionsLoaded] = useState(false);
   // Store API keys for different LLM providers (per user)
   const [apiKeys, setApiKeys] = useState({
     openai: '',
@@ -85,16 +87,27 @@ function App() {
       if (data.session) {
         try {
           const sessions = await databaseAPI.sessions.getSessions();
-          setChatSessions(sessions || []);
+          // Normalize session format to include timestamp field
+          const normalizedSessions = (sessions || []).map(sess => ({
+            ...sess,
+            timestamp: sess.last_message_at || sess.created_at,
+          }));
+          setChatSessions(normalizedSessions);
+          // Select the first session if available
+          if (normalizedSessions.length > 0) {
+            setCurrentSessionId(normalizedSessions[0].id);
+          }
           // Load messages for each session
           const messagesMap = {};
-          for (const sess of sessions || []) {
+          for (const sess of normalizedSessions) {
             const msgs = await databaseAPI.messages.getMessages(sess.id);
             messagesMap[sess.id] = msgs || [];
           }
           setSessionMessages(messagesMap);
+          setSessionsLoaded(true);
         } catch (error) {
           console.error('Failed to load sessions/messages from Supabase:', error);
+          setSessionsLoaded(true); // Mark as loaded even on error
           // Fallback to localStorage
           const storedSessions = localStorage.getItem('chat_sessions');
           if (storedSessions) {
@@ -131,6 +144,11 @@ function App() {
         });
         setUserAvatar(null);
         setCurrentPage('auth');
+        // Reset session-related state
+        setSessionsLoaded(false);
+        setChatSessions([]);
+        setCurrentSessionId(null);
+        setSessionMessages({});
       }
     });
 
@@ -139,8 +157,15 @@ function App() {
   }, []);
 
   // When user logs in and enters chat, ensure a session is selected or create a new one
+  // Only run AFTER sessions have been loaded from the database
   useEffect(() => {
-    if (!session || currentPage !== 'chat' || currentSessionId) return;
+    // Wait for sessions to be loaded before deciding to create a new one
+    if (!session || currentPage !== 'chat' || !sessionsLoaded) return;
+    
+    // If we already have a session selected, don't do anything
+    if (currentSessionId) return;
+    
+    // If there are existing sessions, select the first one
     if (chatSessions.length > 0) {
       setCurrentSessionId(chatSessions[0].id);
       return;
@@ -178,7 +203,7 @@ function App() {
       }
     };
     createInitialSession();
-  }, [session, currentPage, currentSessionId, chatSessions]);
+  }, [session, currentPage, currentSessionId, chatSessions, sessionsLoaded]);
 
   // Update the list of chat sessions and persist to Supabase
   const updateSessions = (updater) => {

@@ -27,7 +27,7 @@ function ChatInterface({
   const [messages, setMessages] = useState(externalMessages || []);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
-  const [sessionId, setSessionId] = useState(propSessionId || `session-${Date.now()}`);
+  const [sessionId, setSessionId] = useState(propSessionId || null);
   const [showModelModal, setShowModelModal] = useState(false); // model picker visibility
   const [searchModel, setSearchModel] = useState('');
   const [currentProvider, setCurrentProvider] = useState(''); // for logo while streaming
@@ -299,16 +299,22 @@ function ChatInterface({
         throw new Error(configError.detail || 'Failed to configure LLM');
       }
       
-      // Save user message to Supabase
-      try {
-        const saved = await databaseAPI.messages.saveMessage(sessionId, 'user', userMessage);
-        if (saved?.id) {
-          updateMessageByLocalId(userLocalId, { id: saved.id });
+      // Save user message to Supabase (only if we have a valid UUID session)
+      // UUID format: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+      const isValidUUID = sessionId && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(sessionId);
+      if (isValidUUID) {
+        try {
+          const saved = await databaseAPI.messages.saveMessage(sessionId, 'user', userMessage);
+          if (saved?.id) {
+            updateMessageByLocalId(userLocalId, { id: saved.id });
+          }
+          console.log('✅ User message saved to Supabase');
+        } catch (error) {
+          console.error('❌ Failed to save user message:', error);
+          console.error('Session ID:', sessionId);
         }
-        console.log('✅ User message saved to Supabase');
-      } catch (error) {
-        console.error('❌ Failed to save user message:', error);
-        console.error('Session ID:', sessionId);
+      } else {
+        console.warn('⚠️ Session ID is not a valid UUID, skipping message save:', sessionId);
       }
 
       // Stream assistant response
@@ -380,8 +386,8 @@ function ChatInterface({
         }
       }
       
-      // Save assistant message to Supabase
-      if (streamedContent) {
+      // Save assistant message to Supabase (only if we have a valid UUID session)
+      if (streamedContent && isValidUUID) {
         try {
           const saved = await databaseAPI.messages.saveMessage(sessionId, 'assistant', streamedContent, selectedModel);
           if (saved?.id) {

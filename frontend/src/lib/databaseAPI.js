@@ -142,13 +142,22 @@ export const promptsAPI = {
 // ==================== AUTH API ====================
 const authAPI = {
   async createProfile(profileData) {
-    return apiRequest('/auth/profile', {
+    // Auth routes are at /api/auth, not /api/db/auth
+    const token = await getAuthToken();
+    const response = await fetch(`${API_URL}/api/auth/profile`, {
       method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
       body: JSON.stringify(profileData),
-    }).catch(() => {
+    });
+    
+    if (!response.ok) {
       // Profile may already exist, ignore error
       return {};
-    });
+    }
+    return response.json();
   },
 };
 

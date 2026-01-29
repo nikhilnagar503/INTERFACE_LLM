@@ -8,9 +8,13 @@
     {
       "src": "frontend/package.json",
       "use": "@vercel/static-build",
-      "config": { "distDir": "build" }
+      "config": { 
+        "distDir": "build",
+        "framework": null
+      }
     }
   ],
+  "installCommand": "cd frontend && npm install --legacy-peer-deps && npm run build",
   "routes": [
     {
       "src": "/api/(.*)",

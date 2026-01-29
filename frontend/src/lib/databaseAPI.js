@@ -4,8 +4,9 @@
  */
 
 import { supabase } from './supabaseClient';
+import { API_URL } from './api';
 
-const API_BASE = 'http://localhost:8000/api/db';
+const API_BASE = `${API_URL}/api/db`;
 
 /**
  * Get auth token from Supabase session

@@ -1,6 +1,6 @@
 # LLM Chatbot Frontend
 
-React-based frontend for the LLM Chatbot application.
+React + Vite frontend for the LLM Chatbot application.
 
 ## Installation
 
@@ -12,14 +12,23 @@ npm install
 
 2. Start the development server:
 ```bash
-npm start
+npm run dev
 ```
 
 The app will open at `http://localhost:3000`
 
+## Environment Variables
+
+Create a `.env` file with:
+```
+VITE_SUPABASE_URL=your_supabase_url
+VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
+VITE_API_URL=http://localhost:5000
+```
+
 ## Make sure the backend is running
 
-The backend Flask server must be running on `http://localhost:5000` (or set `REACT_APP_API_URL`).
+The backend Flask server must be running on `http://localhost:5000` (or set `VITE_API_URL`).
 
 ```bash
 cd ../backend

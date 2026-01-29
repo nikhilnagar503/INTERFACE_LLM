@@ -37,5 +37,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "vercel": {
+    "buildCommand": "npm install --legacy-peer-deps && npm run build",
+    "outputDirectory": "build"
   }
 }

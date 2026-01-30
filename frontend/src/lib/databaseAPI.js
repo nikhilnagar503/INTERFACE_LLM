@@ -143,8 +143,8 @@ export const promptsAPI = {
 const authAPI = {
   async createProfile(profileData) {
     // Auth routes are at /api/auth, not /api/db/auth
-    const token = await getAuthToken();
-    const response = await fetch(`${API_URL}/api/auth/profile`, {
+    const token = await getAuthToken();    // this getauthToken return the token from supabase session
+    const response = await fetch(`${API_URL}/api/auth/profile`, {  
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -157,7 +157,7 @@ const authAPI = {
       // Profile may already exist, ignore error
       return {};
     }
-    return response.json();
+    return response.json();   
   },
 };
 

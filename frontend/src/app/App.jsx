@@ -156,11 +156,11 @@ function App() {
     return () => listener?.subscription?.unsubscribe();
   }, []);
 
-  // When user logs in and enters chat, ensure a session is selected or create a new one
-  // Only run AFTER sessions have been loaded from the database
+  // When sessions are loaded, select the first one if none is selected
+  // Only runs once after sessions are loaded from database
   useEffect(() => {
-    // Wait for sessions to be loaded before deciding to create a new one
-    if (!session || currentPage !== 'chat' || !sessionsLoaded) return;
+    // Wait for sessions to be loaded
+    if (!session || !sessionsLoaded) return;
     
     // If we already have a session selected, don't do anything
     if (currentSessionId) return;
@@ -168,42 +168,9 @@ function App() {
     // If there are existing sessions, select the first one
     if (chatSessions.length > 0) {
       setCurrentSessionId(chatSessions[0].id);
-      return;
     }
-
-    // If no sessions exist, create a new chat session in Supabase
-    const createInitialSession = async () => {
-      try {
-        const created = await databaseAPI.sessions.createSession('New chat');
-        const newSession = {
-          id: created.id,
-          title: created.title,
-          timestamp: created.created_at,
-        };
-        updateSessions((prev) => {
-          const next = [newSession, ...prev.filter((s) => s.id !== newSession.id)];
-          return next.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        });
-        setCurrentSessionId(newSession.id);
-        updateSessionMessages(newSession.id, []);
-      } catch (error) {
-        console.error('Failed to create initial session:', error);
-        // Fallback to local session
-        const newSession = {
-          id: `session-${Date.now()}`,
-          title: 'New chat',
-          timestamp: new Date().toISOString(),
-        };
-        updateSessions((prev) => {
-          const next = [newSession, ...prev.filter((s) => s.id !== newSession.id)];
-          return next.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-        });
-        setCurrentSessionId(newSession.id);
-        updateSessionMessages(newSession.id, []);
-      }
-    };
-    createInitialSession();
-  }, [session, currentPage, currentSessionId, chatSessions, sessionsLoaded]);
+    // If no sessions exist, don't auto-create - let user click "New Chat"
+  }, [session, sessionsLoaded]); // Removed currentPage, chatSessions, currentSessionId to prevent re-runs
 
   // Update the list of chat sessions and persist to Supabase
   const updateSessions = (updater) => {
@@ -329,7 +296,14 @@ function App() {
   const handleClearSessions = async () => {
     try {
       const sessions = await databaseAPI.sessions.getSessions();
-      await Promise.all((sessions || []).map((s) => databaseAPI.sessions.deleteSession(s.id)));
+      // First, clear all messages for each session
+      await Promise.all(
+        (sessions || []).map((s) => databaseAPI.messages.clearSession(s.id))
+      );
+      // Then, delete all sessions
+      await Promise.all(
+        (sessions || []).map((s) => databaseAPI.sessions.deleteSession(s.id))
+      );
     } catch (err) {
       console.error('Failed to clear sessions in backend:', err);
     } finally {
@@ -344,6 +318,9 @@ function App() {
   const handleDeleteSession = async (sessionId) => {
     if (!sessionId) return;
     try {
+      // First, clear all messages for this session
+      await databaseAPI.messages.clearSession(sessionId);
+      // Then, delete the session
       await databaseAPI.sessions.deleteSession(sessionId);
     } catch (err) {
       console.error('Failed to delete session:', err);

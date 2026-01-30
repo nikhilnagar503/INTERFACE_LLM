@@ -247,7 +247,7 @@ function AuthPage({ session, onAuthComplete }) {
             </label>
 
             <label className="auth-label password-field">
-              Password*
+              Password
               <div className="password-wrapper">
                 <input
                   type={showPassword ? 'text' : 'password'}
